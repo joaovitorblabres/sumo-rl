@@ -50,7 +50,7 @@ class SumoEnvironment(MultiAgentEnv):
         self.max_green = max_green
         self.yellow_time = yellow_time
 
-        traci.start([sumolib.checkBinary('sumo'), '-n', self._net])  # start only to retrieve information
+        traci.start([sumolib.checkBinary('sumo'), '-n', self._net, '-r', self._route])  # start only to retrieve information
 
         self.single_agent = single_agent
         self.ts_ids = traci.trafficlight.getIDList()
@@ -66,7 +66,7 @@ class SumoEnvironment(MultiAgentEnv):
         self.out_csv_name = out_csv_name
 
         traci.close()
-        
+
     def reset(self):
         if self.run != 0:
             traci.close()
@@ -77,13 +77,15 @@ class SumoEnvironment(MultiAgentEnv):
         sumo_cmd = [self._sumo_binary,
                      '-n', self._net,
                      '-r', self._route,
-                     '--max-depart-delay', str(self.max_depart_delay), 
+                     '--max-depart-delay', str(self.max_depart_delay),
                      '--waiting-time-memory', '10000',
                      '--time-to-teleport', str(self.time_to_teleport),
-                     '--random']
+                     '--random',
+                     '--quit-on-end']
         if self.use_gui:
             sumo_cmd.append('--start')
 
+        # print(sumo_cmd)
         traci.start(sumo_cmd)
 
         self.traffic_signals = {ts: TrafficSignal(self, ts, self.delta_time, self.yellow_time, self.min_green, self.max_green) for ts in self.ts_ids}
@@ -141,13 +143,13 @@ class SumoEnvironment(MultiAgentEnv):
         Set the next green phase for the traffic signals
         :param actions: If single-agent, actions is an int between 0 and self.num_green_phases (next green phase)
                         If multiagent, actions is a dict {ts_id : greenPhase}
-        """   
+        """
         if self.single_agent:
             self.traffic_signals[self.ts_ids[0]].set_next_phase(actions)
         else:
             for ts, action in actions.items():
                 self.traffic_signals[ts].set_next_phase(action)
-    
+
     def _compute_observations(self):
         return {ts: self.traffic_signals[ts].compute_observation() for ts in self.ts_ids if self.traffic_signals[ts].time_to_act}
 
@@ -157,14 +159,14 @@ class SumoEnvironment(MultiAgentEnv):
     @property
     def observation_space(self):
         return self.traffic_signals[self.ts_ids[0]].observation_space
-    
+
     @property
     def action_space(self):
         return self.traffic_signals[self.ts_ids[0]].action_space
-    
+
     def observation_spaces(self, ts_id):
         return self.traffic_signals[ts_id].observation_space
-    
+
     def action_spaces(self, ts_id):
         return self.traffic_signals[ts_id].action_space
 
@@ -181,10 +183,11 @@ class SumoEnvironment(MultiAgentEnv):
 
     def close(self):
         traci.close()
-    
+
     def save_csv(self, out_csv_name, run):
         if out_csv_name is not None:
             df = pd.DataFrame(self.metrics)
+            os.makedirs(os.path.dirname(out_csv_name + '_run{}'.format(run) + '.csv'), exist_ok=True)
             df.to_csv(out_csv_name + '_run{}'.format(run) + '.csv', index=False)
 
 
@@ -220,5 +223,3 @@ class SumoEnvironment(MultiAgentEnv):
             res[i] = value % self.radix_factors[i]
             value = value // self.radix_factors[i]
         return res """
-
-    

@@ -60,7 +60,7 @@ class TrafficSignal:
     @property
     def time_to_act(self):
         return self.next_action_time == self.env.sim_step
-    
+
     def update(self):
         self.time_since_last_phase_change += 1
         if self.is_yellow and self.time_since_last_phase_change == self.yellow_time:
@@ -71,7 +71,7 @@ class TrafficSignal:
         """
         Sets what will be the next green phase and sets yellow phase if the next phase is different than the current
 
-        :param new_phase: (int) Number between [0..num_green_phases] 
+        :param new_phase: (int) Number between [0..num_green_phases]
         """
         new_phase *= 2
         if self.phase == new_phase or self.time_since_last_phase_change < self.min_green + self.yellow_time:
@@ -84,7 +84,7 @@ class TrafficSignal:
             self.next_action_time = self.env.sim_step + self.delta_time + self.yellow_time
             self.is_yellow = True
             self.time_since_last_phase_change = 0
-    
+
     def compute_observation(self):
         phase_id = [1 if self.phase//2 == i else 0 for i in range(self.num_green_phases)]  # one-hot encoding
         #elapsed = self.traffic_signals[ts].time_on_phase / self.max_green
@@ -92,11 +92,11 @@ class TrafficSignal:
         queue = self.get_lanes_queue()
         observation = np.array(phase_id + density + queue)
         return observation
-            
+
     def compute_reward(self):
         self.last_reward = self._waiting_time_reward()
         return self.last_reward
-    
+
     def _pressure_reward(self):
         return -self.get_pressure()
 
@@ -160,7 +160,7 @@ class TrafficSignal:
     def get_lanes_queue(self):
         vehicle_size_min_gap = 7.5  # 5(vehSize) + 2.5(minGap)
         return [min(1, traci.lane.getLastStepHaltingNumber(lane) / (traci.lane.getLength(lane) / vehicle_size_min_gap)) for lane in self.lanes]
-    
+
     def get_total_queued(self):
         return sum([traci.lane.getLastStepHaltingNumber(lane) for lane in self.lanes])
 
