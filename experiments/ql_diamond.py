@@ -15,6 +15,28 @@ from sumo_rl import SumoEnvironment
 from sumo_rl.agents import QLAgent
 from sumo_rl.exploration import EpsilonGreedy
 
+def foundAllNeighbours(env):
+    vizinhos = {}
+    for i in range(0, len(env.ts_ids)):
+        # print(traci.trafficlight.getControlledLinks(ts)[0][0][1]); exit()
+        ts_i = env.ts_ids[i]
+        # print(traci.trafficlight.getControlledLinks(ts_i)[0][0][0]); exit()
+        for j in range(i+1, len(env.ts_ids)):
+            ts_j = env.ts_ids[j]
+            for link_i in traci.trafficlight.getControlledLinks(ts_i):
+                for link_j in traci.trafficlight.getControlledLinks(ts_j):
+                    if link_i[0][0] == link_j[0][1] or link_i[0][1] == link_j[0][0]:
+                        if ts_i in vizinhos:
+                            if ts_j not in vizinhos[ts_i]:
+                                vizinhos[ts_i].append(ts_j)
+                        else:
+                            vizinhos[ts_i] = [ts_j]
+                        if ts_j in vizinhos:
+                            if ts_i not in vizinhos[ts_j]:
+                                vizinhos[ts_j].append(ts_i)
+                        else:
+                            vizinhos[ts_j] = [ts_i]
+    return vizinhos
 
 if __name__ == '__main__':
 
@@ -49,6 +71,13 @@ if __name__ == '__main__':
                           max_green=args.max_green,
                           max_depart_delay=-1,
                           time_to_teleport=300)
+
+    initial_states = env.reset()
+
+    vizinhos = foundAllNeighbours(env)
+    for ts in vizinhos.keys():
+        env.traffic_signals[ts].neighbours = vizinhos[ts]
+        print(env.traffic_signals[ts].neighbours)
 
     for run in range(1, args.runs+1):
         initial_states = env.reset()
