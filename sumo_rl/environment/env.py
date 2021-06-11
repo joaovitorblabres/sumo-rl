@@ -49,6 +49,7 @@ class SumoEnvironment(MultiAgentEnv):
         self.min_green = min_green
         self.max_green = max_green
         self.yellow_time = yellow_time
+        self.neighbours = {}
 
         traci.start([sumolib.checkBinary('sumo'), '-n', self._net, '-r', self._route])  # start only to retrieve information
 

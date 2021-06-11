@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import numpy as np
 import pandas as pd
 from datetime import datetime
 
@@ -11,9 +12,36 @@ else:
     sys.exit("Please declare the environment variable 'SUMO_HOME'")
 
 import traci
+from sumo_rl.environment.groups import Groups
 from sumo_rl import SumoEnvironment
 from sumo_rl.agents import QLAgent
 from sumo_rl.exploration import EpsilonGreedy
+
+np.random.seed(4937)
+
+def groupingAgents(agents, g0, theta, env, threshold):
+    groups = {}
+    randomAgents = np.random.choice(agents, size=g0, replace=False)
+    for i in range(0, g0):
+        groups[i] = Groups(i, env, threshold)
+        groups[i].addGroup(randomAgents[i])
+
+    for i in range(0, g0):
+        groups[i].checkNeighbours()
+
+    while True:
+        for i in range(0, g0):
+            # print(groups[i], groups[i].neighbours)
+            if groups[i].done == True:
+                continue
+            groups[i].addGroup(np.random.choice(groups[i].neighbours))
+            groups[i].checkNeighbours()
+
+            # print(groups[i], next, groups[i].neighbours)
+
+        if all([groups[j].done == True for j in groups.keys()]):
+            break
+    return groups
 
 def foundAllNeighbours(env):
     vizinhos = {}
@@ -61,6 +89,9 @@ if __name__ == '__main__':
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0]
     out_csv = 'outputs/diamond/{}_alpha{}_gamma{}_eps{}_decay{}'.format(experiment_time, args.alpha, args.gamma, args.epsilon, args.decay)
+    g0 = 3
+    theta = 2
+    threshold = 0.2
 
     env = SumoEnvironment(net_file='nets/diamond/DiamondTLs.net.xml',
                           route_file=args.route,
@@ -76,12 +107,11 @@ if __name__ == '__main__':
 
     vizinhos = foundAllNeighbours(env)
     for ts in vizinhos.keys():
-        env.traffic_signals[ts].neighbours = vizinhos[ts]
-        print(env.traffic_signals[ts].neighbours)
+        env.neighbours[ts] = vizinhos[ts]
 
     for run in range(1, args.runs+1):
         initial_states = env.reset()
-        # print(initial_states, env.action_space)
+
         ql_agents = {ts: QLAgent(starting_state=env.encode(initial_states[ts], ts),
                                  state_space=env.observation_space,
                                  action_space=env.action_spaces(ts),
@@ -90,10 +120,12 @@ if __name__ == '__main__':
                                  exploration_strategy=EpsilonGreedy(initial_epsilon=args.epsilon, min_epsilon=args.min_epsilon, decay=args.decay)) for ts in env.ts_ids}
 
         for ep in range(1, args.eps+1):
-            # print(ep, args.eps+1)
+            groups = groupingAgents(env.ts_ids, g0, theta, env, threshold)
+            # print(groups); exit()
+
             done = {'__all__': False}
             density = {ts: [] for ts in ql_agents.keys()}
-            # print(density,len(env.ts_ids))
+
             infos = []
             if args.fixed:
                 while not done['__all__']:

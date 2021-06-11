@@ -29,6 +29,8 @@ class TrafficSignal:
         self.next_action_time = 0
         self.last_measure = 0.0
         self.last_reward = None
+        self.inGroup = False
+        self.groupTheta = 0
         self.phases = traci.trafficlight.getCompleteRedYellowGreenDefinition(self.id)[0].phases
         self.num_green_phases = len(self.phases) // 2  # Number of green phases == number of phases (green+yellow) divided by 2
         self.lanes = list(dict.fromkeys(traci.trafficlight.getControlledLanes(self.id)))  # Remove duplicates and keep order
