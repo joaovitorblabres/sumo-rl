@@ -133,10 +133,25 @@ if __name__ == '__main__':
             else:
                 while not done['__all__']:
                     actions = {ts: ql_agents[ts].act() for ts in ql_agents.keys()}
+
+                    for i in range(0, len(env.ts_ids)):
+                        groups[env.traffic_signals[env.ts_ids[i]].groupID].setActions[-1].append(actions[env.ts_ids[i]])
+
                     for ts in env.traffic_signals:
                         density[ts].append(env.traffic_signals[ts].get_lanes_density())
 
                     s, r, done, _ = env.step(action=actions)
+
+                    for i in range(0, len(env.ts_ids)):
+                        # print(s[env.ts_ids[i]], r[env.ts_ids[i]])
+                        groups[env.traffic_signals[env.ts_ids[i]].groupID].setStates[-1].append(s[env.ts_ids[i]])
+                        groups[env.traffic_signals[env.ts_ids[i]].groupID].setRewards[-1].append(r[env.ts_ids[i]])
+
+                    for g in range(0, len(groups)):
+                        # print(groups[g].setActions, groups[g].setStates, groups[g].setRewards)
+                        groups[g].setActions.append([])
+                        groups[g].setStates.append([])
+                        groups[g].setRewards.append([])
 
                     for agent_id in s.keys():
                         ql_agents[agent_id].learn(next_state=env.encode(s[agent_id], agent_id), reward=r[agent_id])
