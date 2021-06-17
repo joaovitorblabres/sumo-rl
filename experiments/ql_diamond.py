@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import copy
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -121,7 +122,13 @@ if __name__ == '__main__':
 
         for ep in range(1, args.eps+1):
             groups = groupingAgents(env.ts_ids, g0, theta, env, threshold)
+            for ts in env.ts_ids:
+                groups[env.traffic_signals[ts].groupID].setNextStates.append(env.encode(initial_states[ts], ts))
             # print(groups); exit()
+            for g in range(0, len(groups)):
+                groups[g].addState(groups[g].setNextStates)
+                groups[g].state = copy.deepcopy(groups[g].setNextStates)
+                groups[g].setNextStates = []
 
             done = {'__all__': False}
             density = {ts: [] for ts in ql_agents.keys()}
@@ -142,19 +149,21 @@ if __name__ == '__main__':
 
                     s, r, done, _ = env.step(action=actions)
 
-                    for i in range(0, len(env.ts_ids)):
-                        # print(s[env.ts_ids[i]], r[env.ts_ids[i]])
-                        groups[env.traffic_signals[env.ts_ids[i]].groupID].setStates[-1].append(s[env.ts_ids[i]])
-                        groups[env.traffic_signals[env.ts_ids[i]].groupID].setRewards[-1].append(r[env.ts_ids[i]])
+
+                    next = {}
+                    for agent_id in s.keys():
+                        next[agent_id] = env.encode(s[agent_id], agent_id)
+                        # print("-->>", next[agent_id], s[agent_id])
+                        ql_agents[agent_id].learn(next_state=next[agent_id], reward=r[agent_id])
+                        groups[env.traffic_signals[agent_id].groupID].setNextStates.append(next[agent_id])
+                        groups[env.traffic_signals[agent_id].groupID].setRewards[-1].append(r[agent_id])
 
                     for g in range(0, len(groups)):
-                        # print(groups[g].setActions, groups[g].setStates, groups[g].setRewards)
+                        groups[g].addState(groups[g].setNextStates)
+                        groups[g].learn()
+                        # print("GROUPS ->", g, groups[g].qTable)
                         groups[g].setActions.append([])
-                        groups[g].setStates.append([])
                         groups[g].setRewards.append([])
-
-                    for agent_id in s.keys():
-                        ql_agents[agent_id].learn(next_state=env.encode(s[agent_id], agent_id), reward=r[agent_id])
 
             env.save_csv(out_csv, run)
             density_csv = out_csv+'_{}_{}_densities.csv'.format(run, ep)
