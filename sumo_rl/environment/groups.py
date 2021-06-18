@@ -9,7 +9,7 @@ import traci
 import numpy as np
 import copy
 from gym import spaces
-from sumo_rl.exploration.epsilon_greedy import EpsilonGreedy
+from sumo_rl.exploration.epsilon_greedy import EpsilonGreedyGroups
 
 class Groups:
     """
@@ -17,17 +17,20 @@ class Groups:
     It is responsible for coordenate Traffc Signals that are in the group
     """
 
-    def __init__(self, id, env, threshold, alpha=0.5, gamma=0.95, exploration_strategy=EpsilonGreedy()):
+    def __init__(self, id, env, threshold, alpha=0.5, gamma=0.95, exploration_strategy=EpsilonGreedyGroups()):
         self.id = id
         self.env = env
         self.setTLs = []
-        self.setActions = [[]]
         self.state = []
-        self.setStates = {}
+        self.action = []
+        self.actionToTLs = []
+        self.actionToInt = {}
+        self.intToAction = {}
+        self.stateToInt = {}
+        self.intToState = {}
         self.setNextStates = []
         self.setRewards = [[]]
-        self.action_space = []
-        self.action = None
+        self.action_space = 1
         self.qTable = {}
         self.alpha = alpha
         self.gamma = gamma
@@ -38,31 +41,29 @@ class Groups:
         self.acc_reward = 0
 
     def act(self):
-        self.action = self.exploration.choose(self.qTable, self.state, self.setActions)
-        return self.action
+        if list(self.actionToInt):
+            self.actionToTLs = self.intToAction[self.exploration.choose(self.qTable, self.stateToInt[repr(self.state)], self.actionToInt)]
+            return self.actionToTLs
 
     def learn(self, done=False):
-        print("GROUP: ", self, "\n s", self.setStates, "\n a", self.setActions, "\n r", self.setRewards, "\n n", self.setNextStates)
-        s = self.setStates[repr(self.state)]
-        s1 = self.setStates[repr(self.setNextStates)]
+        # print("GROUP: ", self, "\n s", self.stateToInt, self.state, "\n a", self.actionToInt, "\n r", self.setRewards, "\n s1", self.setNextStates)
+        s = self.stateToInt[repr(self.state)]
+        s1 = self.stateToInt[repr(self.setNextStates)]
+        a = self.actionToInt[repr(self.action)]
 
         if s1 not in self.qTable:
-            self.qTable[s1] = [0 for _ in range(len(self.setActions))]
+            self.qTable[s1] = [0 for _ in range(self.action_space)]
 
-        if self.action is None:
-            self.action = repr(self.setActions[-1])
-
-        a = self.action
-        print(s, a, s1)
-        self.state = copy.deepcopy(s1)
+        self.state = copy.deepcopy(self.setNextStates)
         self.setNextStates = []
 
-        self.qTable[s][a] = self.qTable[s][a] + self.alpha*(self.setRewards[-1] + self.gamma*max(self.qTable[s1]) - self.qTable[s][a])
-        self.acc_reward += self.setRewards[-1]
+        self.qTable[s][a] = self.qTable[s][a] + self.alpha*(sum(self.setRewards[-1]) + self.gamma*max(self.qTable[s1]) - self.qTable[s][a])
+        self.acc_reward += sum(self.setRewards[-1])
 
     def addGroup(self, TL):
         if self.env.traffic_signals[TL].inGroup == False:
             self.setTLs.append(TL)
+            self.action_space *= self.env.traffic_signals[TL].action_space.n
             self.env.traffic_signals[TL].groupID = self.id
             for tl in self.env.neighbours[TL]:
                 if tl not in self.neighbours and self.env.traffic_signals[tl].inGroup == False:
@@ -70,9 +71,20 @@ class Groups:
             self.env.traffic_signals[TL].inGroup = True
 
     def addState(self, state):
-        if repr(state) not in self.setStates:
-            self.setStates[repr(state)] = len(self.setStates)
-        print("group state", self.setStates, len(self.state), state)
+        s = repr(state)
+        l = len(self.stateToInt)
+        if s not in self.stateToInt:
+            self.stateToInt[s] = l
+            self.intToState[l] = s
+        # print("group state", self.stateToInt, len(self.state), s, self.intToState)
+
+    def addAction(self, action):
+        a = repr(action)
+        l = len(self.actionToInt)
+        # print("action state", a)
+        if a not in self.actionToInt:
+            self.actionToInt[a] = l
+            self.intToAction[l] = a
 
     def checkNeighbours(self):
         for neighbour in self.neighbours:
