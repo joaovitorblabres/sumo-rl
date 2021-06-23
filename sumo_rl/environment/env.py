@@ -69,10 +69,13 @@ class SumoEnvironment(MultiAgentEnv):
         traci.close()
 
     def reset(self):
-        if self.run != 0:
+        try:
             traci.close()
+        except Exception as e:
+            pass
+        if self.run != 0:
             self.save_csv(self.out_csv_name, self.run)
-        self.run += 1
+        # self.run += 1
         self.metrics = []
 
         sumo_cmd = [self._sumo_binary,
@@ -131,7 +134,7 @@ class SumoEnvironment(MultiAgentEnv):
 
         observations = self._compute_observations()
         rewards = self._compute_rewards()
-        done = {'__all__': self.sim_step > self.sim_max_time}
+        done = {'__all__': self.sim_step > self.sim_max_time or traci.vehicle.getIDCount() == 0}
         done.update({ts_id: False for ts_id in self.ts_ids})
 
         if self.single_agent:
@@ -153,9 +156,11 @@ class SumoEnvironment(MultiAgentEnv):
 
     def _compute_observations(self):
         return {ts: self.traffic_signals[ts].compute_observation() for ts in self.ts_ids if self.traffic_signals[ts].time_to_act}
+        # return {ts: self.traffic_signals[ts].compute_observation() for ts in self.ts_ids}
 
     def _compute_rewards(self):
         return {ts: self.traffic_signals[ts].compute_reward() for ts in self.ts_ids if self.traffic_signals[ts].time_to_act}
+        # return {ts: self.traffic_signals[ts].compute_reward() for ts in self.ts_ids}
 
     @property
     def observation_space(self):
@@ -215,6 +220,7 @@ class SumoEnvironment(MultiAgentEnv):
         self.radix_factors = [s.n for s in self.traffic_signals[ts_id].discrete_observation_space.spaces]
         for i in range(len(self.radix_factors)):
             res = res * self.radix_factors[i] + values[i]
+
         return int(res)
 
     """ def radix_decode(self, value):

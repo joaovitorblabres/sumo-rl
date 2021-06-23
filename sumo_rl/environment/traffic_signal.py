@@ -76,14 +76,14 @@ class TrafficSignal:
         :param new_phase: (int) Number between [0..num_green_phases]
         """
         new_phase *= 2
-        if self.phase == new_phase or self.time_since_last_phase_change < self.min_green + self.yellow_time:
+        if self.phase == new_phase or self.time_since_last_phase_change < self.min_green + self.yellow_time:# or self.time_to_act:
             self.green_phase = self.phase
             traci.trafficlight.setPhase(self.id, self.green_phase)
             self.next_action_time = self.env.sim_step + self.delta_time
         else:
             self.green_phase = new_phase
             traci.trafficlight.setPhase(self.id, self.phase + 1)  # turns yellow
-            self.next_action_time = self.env.sim_step + self.delta_time + self.yellow_time
+            self.next_action_time = self.env.sim_step + self.delta_time# + self.yellow_time
             self.is_yellow = True
             self.time_since_last_phase_change = 0
 
@@ -93,6 +93,7 @@ class TrafficSignal:
         density = self.get_lanes_density()
         queue = self.get_lanes_queue()
         observation = np.array(phase_id + density + queue)
+        # print(phase_id , density , queue)
         return observation
 
     def compute_reward(self):

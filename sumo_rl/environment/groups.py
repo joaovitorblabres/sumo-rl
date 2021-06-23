@@ -9,6 +9,7 @@ import traci
 import numpy as np
 import copy
 from gym import spaces
+from statistics import mean
 from sumo_rl.exploration.epsilon_greedy import EpsilonGreedyGroups
 
 class Groups:
@@ -17,7 +18,7 @@ class Groups:
     It is responsible for coordenate Traffc Signals that are in the group
     """
 
-    def __init__(self, id, env, threshold, alpha=0.5, gamma=0.95, exploration_strategy=EpsilonGreedyGroups()):
+    def __init__(self, id, env, threshold = 0.1, alpha=0.5, gamma=0.95, exploration_strategy=EpsilonGreedyGroups()):
         self.id = id
         self.env = env
         self.setTLs = []
@@ -39,26 +40,44 @@ class Groups:
         self.threshold = threshold
         self.done = False
         self.acc_reward = 0
+        self.createdAt = 0
+        self.performance = 0
 
     def act(self):
-        if list(self.actionToInt):
-            self.actionToTLs = self.intToAction[self.exploration.choose(self.qTable, self.stateToInt[repr(self.state)], self.actionToInt)]
-            return self.actionToTLs
+        try:
+            if list(self.actionToInt):
+                # print("GROUP:", self, "\n i to a", self.intToAction, "\n a to i", self.actionToInt,"\n s to i", self.stateToInt,"\n s", self.state, "\n q", self.qTable)
+                self.choice = self.exploration.choose(self.qTable, self.stateToInt[repr(self.state)], self.actionToInt)
+                if self.choice < len(self.intToAction.keys()):
+                    self.actionToTLs = self.intToAction[self.choice]
+                else:
+                    self.actionToTLs = self.intToAction[0]
+        except Exception as e:
+            print(self, self.intToAction, self.actionToInt, self.stateToInt, self.state, e)
+            # print(self.intToAction, self.actionToInt, self.choice, self, self.stateToInt)
+            exit()
+        return self.actionToTLs
 
     def learn(self, done=False):
-        # print("GROUP: ", self, "\n s", self.stateToInt, self.state, "\n a", self.actionToInt, "\n r", self.setRewards, "\n s1", self.setNextStates)
+        # print("GROUP: ", self, "\n s", self.stateToInt, self.state, "\n a to i", self.actionToInt, "\n a", self.action, "\n r", self.setRewards[-1], "\n s1", self.setNextStates, "\n q", self.qTable)
+        # print("GROUP: ", self, "\n s", self.state, "\n a", self.action, "\n r", self.setRewards[-1], "\n s1", self.setNextStates, "\n q", self.qTable)
         s = self.stateToInt[repr(self.state)]
         s1 = self.stateToInt[repr(self.setNextStates)]
         a = self.actionToInt[repr(self.action)]
+        # print(self.action_space)
 
         if s1 not in self.qTable:
-            self.qTable[s1] = [0 for _ in range(self.action_space)]
+            self.qTable[s1] = [0 for _ in range(self.action_space*10)]
+
+        if s not in self.qTable:
+            self.qTable[s] = [0 for _ in range(self.action_space*10)]
 
         self.state = copy.deepcopy(self.setNextStates)
         self.setNextStates = []
 
-        self.qTable[s][a] = self.qTable[s][a] + self.alpha*(sum(self.setRewards[-1]) + self.gamma*max(self.qTable[s1]) - self.qTable[s][a])
-        self.acc_reward += sum(self.setRewards[-1])
+        self.qTable[s][a] = self.qTable[s][a] + self.alpha*(mean(self.setRewards[-1]) + self.gamma*max(self.qTable[s1]) - self.qTable[s][a])
+        self.acc_reward += mean(self.setRewards[-1])
+        self.performance += mean([abs(r) for r in self.setRewards[-1]])
 
     def addGroup(self, TL):
         if self.env.traffic_signals[TL].inGroup == False:
@@ -95,11 +114,14 @@ class Groups:
 
 
     def removingGroup(self):
-        last = self.setRewards[-10:]
-        avg = np.average(last)
-        for tl in self.setTLs:
-            if avg < self.threshold:
-                pass
+        avg = self.performance/len(self.setRewards)
+        removed = []
+        for tl in range(0, len(self.setTLs)):
+            if abs(self.setRewards[-1][tl]) < avg*self.threshold and abs(self.setRewards[-1][tl]) != 0:
+                removed.append(self.setTLs[tl])
+                # print(self.setRewards[-1][tl], avg*self.threshold)
+                # print("MUITO RUIM!!!", self.setTLs[tl])
+        return removed
 
     def printTLs(self):
         return (';'.join(self.setTLs))
