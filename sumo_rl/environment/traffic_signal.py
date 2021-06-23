@@ -66,6 +66,7 @@ class TrafficSignal:
     def update(self):
         self.time_since_last_phase_change += 1
         if self.is_yellow and self.time_since_last_phase_change == self.yellow_time:
+            print(self.id, self.green_phase)
             traci.trafficlight.setPhase(self.id, self.green_phase)
             self.is_yellow = False
 
@@ -76,7 +77,7 @@ class TrafficSignal:
         :param new_phase: (int) Number between [0..num_green_phases]
         """
         new_phase *= 2
-        if self.phase == new_phase or self.time_since_last_phase_change < self.min_green + self.yellow_time:# or self.time_to_act:
+        if self.phase == new_phase or self.time_since_last_phase_change < self.min_green + self.yellow_time or self.time_to_act:
             self.green_phase = self.phase
             traci.trafficlight.setPhase(self.id, self.green_phase)
             self.next_action_time = self.env.sim_step + self.delta_time

@@ -126,8 +126,9 @@ if __name__ == '__main__':
                                  exploration_strategy=EpsilonGreedy(initial_epsilon=args.epsilon, min_epsilon=args.min_epsilon, decay=args.decay)) for ts in env.ts_ids}
 
         groups = groupingAgents(env.ts_ids, g0, theta, env, threshold)
-        for ts in env.ts_ids:
-            groups[env.traffic_signals[ts].groupID].setNextStates.append(env.encode(initial_states[ts], ts))
+        for g in groups.keys():
+            for ts in groups[g].setTLs:
+                groups[env.traffic_signals[ts].groupID].setNextStates.append(env.encode(initial_states[ts], ts))
             # print(groups); exit()
         for g in groups.keys():
             groups[g].addState(groups[g].setNextStates)
@@ -153,7 +154,9 @@ if __name__ == '__main__':
                     _, _, done, _ = env.step({})
             else:
                 while not done['__all__']:
-                    print(env.sim_step)
+                    # print(env.sim_step)
+
+                    # ORGANIZAR MELHOR
                     if numberOfSingletons/len(env.ts_ids) > 0.5:
                         print("REAGRUPANDO")
                         for g in groups.keys():
@@ -176,27 +179,37 @@ if __name__ == '__main__':
                                 for TL in groups[g].setTLs:
                                     env.traffic_signals[TL].groupID = g
                                     env.traffic_signals[TL].inGroup = True
+                                    ql_agents[TL].groupActing = False
                                 # print(groups[g], backupGroups)
                             else:
-                                for ts in env.ts_ids:
-                                    groups[env.traffic_signals[ts].groupID].setNextStates.append(next[ts])
+                                for agent_id in groups[g].setTLs:
+                                    # print(groups[g], groups[g].setTLs, agent_id, next[agent_id])
+                                    groups[g].setNextStates.append(next[agent_id])
+                                    groups[g].setRewards[-1].append(r[agent_id])
 
                                 groups[g].addState(groups[g].setNextStates)
                                 groups[g].state = copy.deepcopy(groups[g].setNextStates)
                                 groups[g].setNextStates = []
                             groups[g].createdAt = env.sim_step
 
-                    actions = {ts: ql_agents[ts].act() for ts in ql_agents.keys()}
-
+                    # ORGANIZAR MELHOR
                     actionsGroups = {}
                     for g in groups.keys():
                         if env.sim_step > args.seconds*0.1 + groups[g].createdAt: # espera um tempo para começar a agir os agentes dos grupos
-                            actionsGroups[g] = groups[g].act()
+                            actionsGroups[g] = groups[g].act().replace('[', '').replace(']', '').split(',')
+                            for agent_id in range(0, len(groups[g].setTLs)):
+                                ql_agents[groups[g].setTLs[agent_id]].groupActing = True
+                                ql_agents[groups[g].setTLs[agent_id]].groupAction = int(actionsGroups[g][agent_id])
+                                # print(groups[g], actionsGroups[g][agent_id], ql_agents[groups[g].setTLs[agent_id]].groupAction, groups[g].setTLs[agent_id], env.ts_ids[agent_id])
 
-                    for agent_id in range(0, len(env.ts_ids)):
-                        if env.traffic_signals[env.ts_ids[agent_id]].groupID is not None:
+                    # print(ql_agents.keys(), env.sim_step)
+                    actions = {ts: ql_agents[ts].act() for ts in ql_agents.keys()}
+
+                    # Updates groups actions
+                    for g in groups.keys():
+                        for agent_id in groups[g].setTLs:
                             # print(env.ts_ids[agent_id], groups, env.traffic_signals[env.ts_ids[agent_id]].groupID)
-                            groups[env.traffic_signals[env.ts_ids[agent_id]].groupID].action.append(actions[env.ts_ids[agent_id]])
+                            groups[g].action.append(actions[agent_id])
 
                     for ts in env.traffic_signals:
                         density[ts].append(env.traffic_signals[ts].get_lanes_density())
@@ -208,16 +221,20 @@ if __name__ == '__main__':
                         next[agent_id] = env.encode(s[agent_id], agent_id)
                         # print("-->>", next[agent_id], s)
                         ql_agents[agent_id].learn(next_state=next[agent_id], reward=r[agent_id])
-                        if env.traffic_signals[agent_id].groupID is not None:
-                            groups[env.traffic_signals[agent_id].groupID].setNextStates.append(next[agent_id])
-                            groups[env.traffic_signals[agent_id].groupID].setRewards[-1].append(r[agent_id])
 
+                    for g in groups.keys():
+                        for agent_id in groups[g].setTLs:
+                            # print(groups[g], groups[g].setTLs, agent_id, next[agent_id])
+                            groups[g].setNextStates.append(next[agent_id])
+                            groups[g].setRewards[-1].append(r[agent_id])
+
+                    # ORGANIZAR MELHOR
                     for g in list(groups):
                         groups[g].addState(groups[g].setNextStates)
                         groups[g].addAction(groups[g].action)
                         groups[g].learn()
 
-                        if env.sim_step > args.seconds*0.1 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
+                        if env.sim_step > args.seconds*0.2 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
                             removed = groups[g].removingGroup()
                             if removed:
                                 print("GROUPS BEING REMOVED->", groups[g], removed)
@@ -226,6 +243,7 @@ if __name__ == '__main__':
                                 for agent_id in groups[g].setTLs:
                                     env.traffic_signals[agent_id].groupID = None
                                     env.traffic_signals[agent_id].inGroup = False
+                                    ql_agents[agent_id].groupActing = False
 
                                 # for agent_id in s.keys():
                                     # print(env.traffic_signals[agent_id].groupID)
