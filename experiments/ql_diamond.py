@@ -32,12 +32,13 @@ def groupingAgents(agents, g0, theta, env, threshold):
 
     while True:
         for i in range(0, g0):
-            # print(groups[i], groups[i].neighbours)
+            # print(groups[i], groups[i].neighbours, groups[i].done)
+            groups[i].checkNeighbours()
             if groups[i].done == True:
                 continue
             if groups[i].neighbours:
                 groups[i].addGroup(np.random.choice(groups[i].neighbours))
-                groups[i].checkNeighbours()
+            groups[i].checkNeighbours()
 
             # print(groups[i], next, groups[i].neighbours)
 
@@ -94,7 +95,7 @@ if __name__ == '__main__':
     out_csv = 'outputs/diamond/{}_alpha{}_gamma{}_eps{}_decay{}'.format(experiment_time, args.alpha, args.gamma, args.epsilon, args.decay)
     g0 = 3
     theta = 2
-    threshold = 0.8
+    threshold = 0.2
     numberOfSingletons = 0
     backupGroups = {}
 
@@ -147,6 +148,8 @@ if __name__ == '__main__':
 
             for agent_id in range(0, len(env.ts_ids)):
                 env.traffic_signals[env.ts_ids[agent_id]].groupID = TSGroup[agent_id]
+            for g in groups.keys():
+                groups[g].createdAt = env.sim_step
 
             infos = []
             if args.fixed:
@@ -163,10 +166,11 @@ if __name__ == '__main__':
                             backupGroups[groups[g].printTLs()] = copy.deepcopy(groups[g])
                             backupGroups[groups[g].printTLs()].id = None
 
+                        for agent_id in env.ts_ids:
+                            env.traffic_signals[agent_id].groupID = None
+                            env.traffic_signals[agent_id].inGroup = False
+
                         for g in list(groups):
-                            for agent_id in env.ts_ids:
-                                env.traffic_signals[agent_id].groupID = None
-                                env.traffic_signals[agent_id].inGroup = False
                             del groups[g]
 
                         numberOfSingletons = 0
@@ -176,10 +180,11 @@ if __name__ == '__main__':
                             if groups[g].printTLs() in backupGroups.keys():
                                 groups[g] = copy.deepcopy(backupGroups[groups[g].printTLs()])
                                 groups[g].id = g
-                                for TL in groups[g].setTLs:
-                                    env.traffic_signals[TL].groupID = g
-                                    env.traffic_signals[TL].inGroup = True
-                                    ql_agents[TL].groupActing = False
+                                for agent_id in groups[g].setTLs:
+                                    env.traffic_signals[agent_id].groupID = g
+                                    env.traffic_signals[agent_id].inGroup = True
+                                    ql_agents[agent_id].groupActing = False
+                                    ql_agents[agent_id].epsilonGroup = 1
                                 # print(groups[g], backupGroups)
                             else:
                                 for agent_id in groups[g].setTLs:
@@ -196,6 +201,7 @@ if __name__ == '__main__':
                     actionsGroups = {}
                     for g in groups.keys():
                         if env.sim_step > args.seconds*0.1 + groups[g].createdAt: # espera um tempo para começar a agir os agentes dos grupos
+                            # print("tá entrando")
                             actionsGroups[g] = groups[g].act().replace('[', '').replace(']', '').split(',')
                             for agent_id in range(0, len(groups[g].setTLs)):
                                 ql_agents[groups[g].setTLs[agent_id]].groupActing = True
@@ -220,7 +226,7 @@ if __name__ == '__main__':
                     for agent_id in s.keys():
                         next[agent_id] = env.encode(s[agent_id], agent_id)
                         # print("-->>", next[agent_id], s)
-                        ql_agents[agent_id].learn(next_state=next[agent_id], reward=r[agent_id])
+                        ql_agents[agent_id].learn(next_state=env.encode(s[agent_id], agent_id), reward=r[agent_id])
 
                     for g in groups.keys():
                         for agent_id in groups[g].setTLs:
@@ -235,6 +241,7 @@ if __name__ == '__main__':
                         groups[g].learn()
 
                         if env.sim_step > args.seconds*0.2 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
+                            # print("tá entrando para remover")
                             removed = groups[g].removingGroup()
                             if removed:
                                 print("GROUPS BEING REMOVED->", groups[g], removed)
@@ -244,6 +251,7 @@ if __name__ == '__main__':
                                     env.traffic_signals[agent_id].groupID = None
                                     env.traffic_signals[agent_id].inGroup = False
                                     ql_agents[agent_id].groupActing = False
+                                    ql_agents[agent_id].epsilonGroup = 1
 
                                 # for agent_id in s.keys():
                                     # print(env.traffic_signals[agent_id].groupID)
@@ -261,6 +269,8 @@ if __name__ == '__main__':
                                         for TL in newGroupTLs:
                                             env.traffic_signals[TL].groupID = newGroupID
                                             env.traffic_signals[TL].inGroup = True
+                                            ql_agents[agent_id].groupActing = False
+                                            ql_agents[agent_id].epsilonGroup = 1
                                     else:
                                         groups[newGroupID] = Groups(newGroupID, env, threshold)
                                         for TL in newGroupTLs:
@@ -289,7 +299,7 @@ if __name__ == '__main__':
                     # for agent_id in s.keys():
                         # print(agent_id, env.traffic_signals[agent_id].groupID)
 
-            env.save_csv(out_csv, run)
+            env.save_csv(out_csv, run, ep)
             density_csv = out_csv+'_run{}_ep{}_densities.csv'.format(run, ep)
             os.makedirs(os.path.dirname(density_csv), exist_ok=True)
             df = pd.DataFrame(density)

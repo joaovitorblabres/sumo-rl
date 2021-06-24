@@ -74,7 +74,7 @@ class SumoEnvironment(MultiAgentEnv):
         except Exception as e:
             pass
         if self.run != 0:
-            self.save_csv(self.out_csv_name, self.run)
+            self.save_csv(self.out_csv_name, self.run, 0)
         # self.run += 1
         self.metrics = []
 
@@ -190,11 +190,11 @@ class SumoEnvironment(MultiAgentEnv):
     def close(self):
         traci.close()
 
-    def save_csv(self, out_csv_name, run):
+    def save_csv(self, out_csv_name, run, ep):
         if out_csv_name is not None:
             df = pd.DataFrame(self.metrics)
-            os.makedirs(os.path.dirname(out_csv_name + '_run{}'.format(run) + '.csv'), exist_ok=True)
-            df.to_csv(out_csv_name + '_run{}'.format(run) + '.csv', index=False)
+            os.makedirs(os.path.dirname(out_csv_name + '_run{}_ep{}'.format(run, ep) + '.csv'), exist_ok=True)
+            df.to_csv(out_csv_name + '_run{}_ep{}'.format(run, ep) + '.csv', index=False)
 
 
     # Below functions are for discrete state space

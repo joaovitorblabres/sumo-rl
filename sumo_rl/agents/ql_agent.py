@@ -15,8 +15,8 @@ class QLAgent:
         self.groupAction = None
         self.groupActing = False
         self.epsilonGroup = 1
-        self.decayGroup = 0.99
-        self.minEpsilonGroup = 0.2
+        self.decayGroup = 0.999
+        self.minEpsilonGroup = 0.5
         self.q_table = {self.state: [0 for _ in range(action_space.n)]}
         self.exploration = exploration_strategy
         self.acc_reward = 0
