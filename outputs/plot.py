@@ -7,7 +7,7 @@ import glob
 from itertools import cycle
 
 sns.set(style='darkgrid', rc={'figure.figsize': (7.2, 4.45),
-                            'text.usetex': True,
+                            # 'text.usetex': True,
                             'xtick.labelsize': 16,
                             'ytick.labelsize': 16,
                             'font.size': 15,
@@ -29,7 +29,7 @@ def moving_average(interval, window_size):
         return interval
     window = np.ones(int(window_size))/float(window_size)
     return np.convolve(interval, window, 'same')
-
+pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 def plot_df(df, color, xaxis, yaxis, ma=1, label=''):
     df[yaxis] = pd.to_numeric(df[yaxis], errors='coerce')  # convert NaN string to NaN value
@@ -43,7 +43,8 @@ def plot_df(df, color, xaxis, yaxis, ma=1, label=''):
     x = df.groupby(xaxis)[xaxis].mean().keys().values
     plt.plot(x, mean, label=label, color=color, linestyle=next(dashes_styles))
     plt.fill_between(x, mean + std, mean - std, alpha=0.25, color=color, rasterized=True)
-    
+    print(mean, std)
+
     #plt.ylim([0,200])
     #plt.xlim([40000, 70000])
 
@@ -51,18 +52,18 @@ def plot_df(df, color, xaxis, yaxis, ma=1, label=''):
 if __name__ == '__main__':
 
     prs = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                  description="""Plot Traffic Signal Metrics""")  
-    prs.add_argument('-f', nargs='+', required=True, help="Measures files\n")            
+                                  description="""Plot Traffic Signal Metrics""")
+    prs.add_argument('-f', nargs='+', required=True, help="Measures files\n")
     prs.add_argument('-l', nargs='+', default=None, help="File's legends\n")
     prs.add_argument('-t', type=str, default="", help="Plot title\n")
     prs.add_argument("-yaxis", type=str, default='total_wait_time', help="The column to plot.\n")
     prs.add_argument("-xaxis", type=str, default='step_time', help="The x axis.\n")
     prs.add_argument("-ma", type=int, default=1, help="Moving Average Window.\n")
     prs.add_argument('-sep', type=str, default=',', help="Values separator on file.\n")
-    prs.add_argument('-xlabel', type=str, default='Second', help="X axis label.\n") 
-    prs.add_argument('-ylabel', type=str, default='Total waiting time (s)', help="Y axis label.\n")    
+    prs.add_argument('-xlabel', type=str, default='Second', help="X axis label.\n")
+    prs.add_argument('-ylabel', type=str, default='Total waiting time (s)', help="Y axis label.\n")
     prs.add_argument('-output', type=str, default=None, help="PDF output filename.\n")
-   
+
     args = prs.parse_args()
     labels = cycle(args.l) if args.l is not None else cycle([str(i) for i in range(len(args.f))])
 

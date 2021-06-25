@@ -109,10 +109,10 @@ class Groups:
         for neighbour in self.neighbours:
             if self.env.traffic_signals[neighbour].inGroup == True:
                 self.neighbours.remove(neighbour)
-            if not self.neighbours:
-                self.done = True
-            else:
-                self.done = False
+        if not self.neighbours:
+            self.done = True
+        else:
+            self.done = False
 
 
     def removingGroup(self):

@@ -134,7 +134,7 @@ class SumoEnvironment(MultiAgentEnv):
 
         observations = self._compute_observations()
         rewards = self._compute_rewards()
-        done = {'__all__': self.sim_step > self.sim_max_time or traci.vehicle.getIDCount() == 0}
+        done = {'__all__': self.sim_step > self.sim_max_time }#or traci.vehicle.getIDCount() == 0}
         done.update({ts_id: False for ts_id in self.ts_ids})
 
         if self.single_agent:

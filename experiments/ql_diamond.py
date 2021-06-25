@@ -98,6 +98,7 @@ if __name__ == '__main__':
     threshold = 0.2
     numberOfSingletons = 0
     backupGroups = {}
+    lastSecond = args.seconds
 
     env = SumoEnvironment(net_file='nets/diamond/DiamondTLs.net.xml',
                           route_file=args.route,
@@ -118,6 +119,7 @@ if __name__ == '__main__':
     for run in range(1, args.runs+1):
         initial_states = env.reset()
         env.run = run
+        lastSecond = args.seconds
 
         ql_agents = {ts: QLAgent(starting_state=env.encode(initial_states[ts], ts),
                                  state_space=env.observation_space,
@@ -200,7 +202,7 @@ if __name__ == '__main__':
                     # ORGANIZAR MELHOR
                     actionsGroups = {}
                     for g in groups.keys():
-                        if env.sim_step > args.seconds*0.1 + groups[g].createdAt: # espera um tempo para começar a agir os agentes dos grupos
+                        if env.sim_step > lastSecond*0.1 + groups[g].createdAt: # espera um tempo para começar a agir os agentes dos grupos
                             # print("tá entrando")
                             actionsGroups[g] = groups[g].act().replace('[', '').replace(']', '').split(',')
                             for agent_id in range(0, len(groups[g].setTLs)):
@@ -240,7 +242,7 @@ if __name__ == '__main__':
                         groups[g].addAction(groups[g].action)
                         groups[g].learn()
 
-                        if env.sim_step > args.seconds*0.2 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
+                        if env.sim_step > lastSecond*0.2 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
                             # print("tá entrando para remover")
                             removed = groups[g].removingGroup()
                             if removed:
@@ -300,10 +302,11 @@ if __name__ == '__main__':
                         # print(agent_id, env.traffic_signals[agent_id].groupID)
 
             env.save_csv(out_csv, run, ep)
-            density_csv = out_csv+'_run{}_ep{}_densities.csv'.format(run, ep)
+            density_csv = out_csv+'_densities_run{}_ep{}.csv'.format(run, ep)
             os.makedirs(os.path.dirname(density_csv), exist_ok=True)
             df = pd.DataFrame(density)
             df.to_csv(density_csv, index=False)
+            lastSecond = env.sim_step
 
             TSGroup = []
             for agent_id in range(0, len(env.ts_ids)):
