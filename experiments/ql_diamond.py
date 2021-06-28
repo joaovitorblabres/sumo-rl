@@ -92,7 +92,7 @@ if __name__ == '__main__':
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0]
-    out_csv = 'outputs/diamond/{}_alpha{}_gamma{}_eps{}_decay{}'.format(experiment_time, args.alpha, args.gamma, args.epsilon, args.decay)
+    out_csv = 'outputs/diamond_tests/{}_alpha{}_gamma{}_eps{}_decay{}'.format(experiment_time, args.alpha, args.gamma, args.epsilon, args.decay)
     g0 = 3
     theta = 2
     threshold = 0.2
@@ -141,6 +141,8 @@ if __name__ == '__main__':
         TSGroup = []
         for agent_id in range(0, len(env.ts_ids)):
             TSGroup.append(env.traffic_signals[env.ts_ids[agent_id]].groupID)
+
+        twt = []
 
         for ep in range(1, args.eps+1):
             print("RUN =", run, "EP =", ep)
@@ -302,6 +304,8 @@ if __name__ == '__main__':
                         # print(agent_id, env.traffic_signals[agent_id].groupID)
 
             env.save_csv(out_csv, run, ep)
+            df = pd.DataFrame(env.metrics)
+            twt.append(df['total_wait_time'].sum())
             density_csv = out_csv+'_densities_run{}_ep{}.csv'.format(run, ep)
             os.makedirs(os.path.dirname(density_csv), exist_ok=True)
             df = pd.DataFrame(density)
@@ -316,4 +320,5 @@ if __name__ == '__main__':
                 initial_states = env.reset()
             if ep == args.eps:
                 env.close()
+        print(twt)
         env.run += 1

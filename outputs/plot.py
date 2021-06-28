@@ -43,7 +43,7 @@ def plot_df(df, color, xaxis, yaxis, ma=1, label=''):
     x = df.groupby(xaxis)[xaxis].mean().keys().values
     plt.plot(x, mean, label=label, color=color, linestyle=next(dashes_styles))
     plt.fill_between(x, mean + std, mean - std, alpha=0.25, color=color, rasterized=True)
-    print(mean, std)
+    # print(mean, std, df.groupby(xaxis).sum())
 
     #plt.ylim([0,200])
     #plt.xlim([40000, 70000])

@@ -60,6 +60,7 @@ if __name__ == '__main__':
                                  gamma=args.gamma,
                                  exploration_strategy=EpsilonGreedy(initial_epsilon=args.epsilon, min_epsilon=args.min_epsilon, decay=args.decay)) for ts in env.ts_ids}
 
+        twt = []
         for ep in range(1, args.eps+1):
             print("RUN =", run, "EP =", ep)
             done = {'__all__': False}
@@ -81,6 +82,8 @@ if __name__ == '__main__':
                         ql_agents[agent_id].learn(next_state=env.encode(s[agent_id], agent_id), reward=r[agent_id])
 
             env.save_csv(out_csv, run, ep)
+            df = pd.DataFrame(env.metrics)
+            twt.append(df['total_wait_time'].sum())
             density_csv = out_csv+'_{}_{}_densities.csv'.format(run, ep)
             os.makedirs(os.path.dirname(density_csv), exist_ok=True)
             df = pd.DataFrame(density)
@@ -90,3 +93,4 @@ if __name__ == '__main__':
                 initial_states = env.reset()
             if ep == args.eps:
                 env.close()
+        print(twt)
