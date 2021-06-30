@@ -24,7 +24,7 @@ def groupingAgents(agents, g0, theta, env, threshold):
     groups = {}
     randomAgents = np.random.choice(agents, size=g0, replace=False)
     for i in range(0, g0):
-        groups[i] = Groups(i, env, threshold)
+        groups[i] = Groups(i, env, threshold, args.alpha_group, args.gamma_group)
         groups[i].addGroup(randomAgents[i])
 
     for i in range(0, g0):
@@ -75,7 +75,9 @@ if __name__ == '__main__':
                                   description="""Q-Learning Diamond Network""")
     prs.add_argument("-route", dest="route", type=str, default='nets/diamond/DiamondTLs.rou.alt.xml', help="Route definition xml file.\n")
     prs.add_argument("-a", dest="alpha", type=float, default=0.1, required=False, help="Alpha learning rate.\n")
+    prs.add_argument("-ag", dest="alpha_group", type=float, default=0.1, required=False, help="Group Alpha learning rate.\n")
     prs.add_argument("-g", dest="gamma", type=float, default=0.99, required=False, help="Gamma discount rate.\n")
+    prs.add_argument("-gg", dest="gamma_group", type=float, default=0.99, required=False, help="Group Gamma discount rate.\n")
     prs.add_argument("-e", dest="epsilon", type=float, default=1, required=False, help="Epsilon.\n")
     prs.add_argument("-me", dest="min_epsilon", type=float, default=0.1, required=False, help="Minimum epsilon.\n")
     prs.add_argument("-d", dest="decay", type=float, default=0.95, required=False, help="Epsilon decay.\n")
@@ -92,7 +94,7 @@ if __name__ == '__main__':
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0]
-    out_csv = 'outputs/diamond_tests/{}_alpha{}_gamma{}_eps{}_decay{}'.format(experiment_time, args.alpha, args.gamma, args.epsilon, args.decay)
+    out_csv = 'outputs/diamond_tests/{}_alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}'.format(experiment_time, args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay)
     g0 = 3
     theta = 2
     threshold = 0.2
@@ -276,7 +278,7 @@ if __name__ == '__main__':
                                             ql_agents[agent_id].groupActing = False
                                             ql_agents[agent_id].epsilonGroup = 1
                                     else:
-                                        groups[newGroupID] = Groups(newGroupID, env, threshold)
+                                        groups[newGroupID] = Groups(newGroupID, env, threshold, args.alpha_group, args.gamma_group)
                                         for TL in newGroupTLs:
                                             groups[newGroupID].addGroup(TL)
                                             groups[newGroupID].checkNeighbours()
