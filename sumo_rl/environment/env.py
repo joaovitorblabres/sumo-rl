@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
     sys.path.append(tools)
@@ -134,7 +135,7 @@ class SumoEnvironment(MultiAgentEnv):
 
         observations = self._compute_observations()
         rewards = self._compute_rewards()
-        done = {'__all__': self.sim_step > self.sim_max_time }#or traci.vehicle.getIDCount() == 0}
+        done = {'__all__': self.sim_step > self.sim_max_time or traci.vehicle.getIDCount() == 0}
         done.update({ts_id: False for ts_id in self.ts_ids})
 
         if self.single_agent:
@@ -184,7 +185,8 @@ class SumoEnvironment(MultiAgentEnv):
             'step_time': self.sim_step,
             'reward': self.traffic_signals[self.ts_ids[0]].last_reward,
             'total_stopped': sum(self.traffic_signals[ts].get_total_queued() for ts in self.ts_ids),
-            'total_wait_time': sum(sum(self.traffic_signals[ts].get_waiting_time_per_lane()) for ts in self.ts_ids)
+            'total_wait_time': sum(sum(self.traffic_signals[ts].get_waiting_time_per_lane()) for ts in self.ts_ids),
+            'vehicles': traci.vehicle.getIDCount()
         }
 
     def close(self):
@@ -200,7 +202,7 @@ class SumoEnvironment(MultiAgentEnv):
     # Below functions are for discrete state space
 
     def encode(self, state, ts_id):
-        phase = np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0]
+        phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
         #elapsed = self._discretize_elapsed_time(state[self.num_green_phases])
         density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
         return self.radix_encode([phase] + density_queue, ts_id)

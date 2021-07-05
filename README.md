@@ -6,7 +6,7 @@
 
 # SUMO-RL
 
-SUMO-RL provides a simple interface to instantiate Reinforcement Learning environments with [SUMO](https://github.com/eclipse/sumo) for Traffic Signal Control. 
+SUMO-RL provides a simple interface to instantiate Reinforcement Learning environments with [SUMO](https://github.com/eclipse/sumo) for Traffic Signal Control.
 
 The main class [SumoEnvironment](https://github.com/LucasAlegre/sumo-rl/blob/master/environment/env.py) inherits [MultiAgentEnv](https://github.com/ray-project/ray/blob/master/python/ray/rllib/env/multi_agent_env.py) from [RLlib](https://github.com/ray-project/ray/tree/master/python/ray/rllib).  
 If instantiated with parameter 'single-agent=True', it behaves like a regular [Gym Env](https://github.com/openai/gym/blob/master/gym/core.py) from [OpenAI](https://github.com/openai).  
@@ -25,14 +25,18 @@ Goals of this repository:
 ```
 sudo add-apt-repository ppa:sumo/stable
 sudo apt-get update
-sudo apt-get install sumo sumo-tools sumo-doc 
+sudo apt-get install sumo sumo-tools sumo-doc
 ```
 Don't forget to set SUMO_HOME variable (default sumo installation path is /usr/share/sumo)
 ```
 echo 'export SUMO_HOME="/usr/share/sumo"' >> ~/.bashrc
 source ~/.bashrc
 ```
-
+Important: for a huge performance boost (~8x) with Libsumo, you can declare the variable:
+```
+export LIBSUMO_AS_TRACI=1
+```
+Notice that you will not be able to run with sumo-gui if this is active ([more details](https://sumo.dlr.de/docs/Libsumo.html)).
 ### Install SUMO-RL
 
 Stable release version is available through pip
@@ -53,7 +57,7 @@ Check [experiments](https://github.com/LucasAlegre/sumo-rl/tree/master/experimen
 
 ### [Q-learning](https://github.com/LucasAlegre/sumo-rl/blob/master/agents/ql_agent.py) in a one-way single intersection:
 ```
-python3 experiments/ql_single-intersection.py 
+python3 experiments/ql_single-intersection.py
 ```
 
 ### [RLlib A3C](https://github.com/ray-project/ray/tree/master/python/ray/rllib/agents/a3c) multiagent in a 4x4 grid:
@@ -68,7 +72,7 @@ python3 experiments/dqn_2way-single-intersection.py
 
 ### Plotting results:
 ```
-python3 outputs/plot.py -f outputs/2way-single-intersection/a3c 
+python3 outputs/plot.py -f outputs/2way-single-intersection/a3c
 ```
 ![alt text](https://github.com/LucasAlegre/sumo-rl/blob/master/outputs/result.png)
 
