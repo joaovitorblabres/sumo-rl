@@ -85,7 +85,10 @@ class SumoEnvironment(MultiAgentEnv):
                      '--max-depart-delay', str(self.max_depart_delay),
                      '--waiting-time-memory', '10000',
                      '--time-to-teleport', str(self.time_to_teleport),
+                     '--max-num-vehicles', str(800),
+                     # '--seed', str(4937),
                      '--random',
+                     # '--no-warnings',
                      '--quit-on-end']
         if self.use_gui:
             sumo_cmd.append('--start')
@@ -190,7 +193,8 @@ class SumoEnvironment(MultiAgentEnv):
             'reward': self.traffic_signals[self.ts_ids[0]].last_reward,
             'total_stopped': sum(self.traffic_signals[ts].get_total_queued() for ts in self.ts_ids),
             'total_wait_time': sum(sum(self.traffic_signals[ts].get_waiting_time_per_lane()) for ts in self.ts_ids),
-            'vehicles': traci.vehicle.getIDCount(),
+            'vehicles_on_network': traci.vehicle.getIDCount(),
+            'teleported_vehicles': traci.simulation.getEndingTeleportNumber() ,
             'average_wait_time': sum(sum(self.traffic_signals[ts].get_waiting_time_per_lane()) for ts in self.ts_ids) / val
         }
 

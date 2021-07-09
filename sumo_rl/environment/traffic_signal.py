@@ -80,6 +80,7 @@ class TrafficSignal:
         :param new_phase: (int) Number between [0..num_green_phases]
         """
         new_phase *= 2
+        # print(self.time_since_last_phase_change)
         if self.phase == new_phase or self.time_since_last_phase_change < self.min_green + self.yellow_time:# or self.time_to_act:
             self.green_phase = self.phase
             traci.trafficlight.setPhase(self.id, self.green_phase)
@@ -170,6 +171,9 @@ class TrafficSignal:
 
     def get_total_queued(self):
         return sum([traci.lane.getLastStepHaltingNumber(lane) for lane in self.lanes])
+
+    def get_total_vehicles(self):
+        return sum(traci.lane.getLastStepVehicleNumber(lane) for lane in self.lanes)
 
     def _get_veh_list(self):
         veh_list = []

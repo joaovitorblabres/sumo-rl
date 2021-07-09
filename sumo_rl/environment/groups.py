@@ -18,7 +18,7 @@ class Groups:
     It is responsible for coordenate Traffc Signals that are in the group
     """
 
-    def __init__(self, id, env, threshold = 0.1, alpha=0.5, gamma=0.95, exploration_strategy=EpsilonGreedyGroups()):
+    def __init__(self, id, env, threshold = 0.1, alpha=0.1, gamma=0.95, exploration_strategy=EpsilonGreedyGroups()):
         self.id = id
         self.env = env
         self.setTLs = []
@@ -31,6 +31,7 @@ class Groups:
         self.intToState = {}
         self.setNextStates = []
         self.setRewards = [[]]
+        self.rewards = []
         self.action_space = 1
         self.qTable = {}
         self.alpha = alpha
@@ -75,9 +76,24 @@ class Groups:
         self.state = copy.deepcopy(self.setNextStates)
         self.setNextStates = []
 
-        self.qTable[s][a] = self.qTable[s][a] + self.alpha*(mean(self.setRewards[-1]) + self.gamma*max(self.qTable[s1]) - self.qTable[s][a])
-        self.acc_reward += mean(self.setRewards[-1])
-        self.performance += mean([abs(r) for r in self.setRewards[-1]])
+        rewardNormalized = []
+        totalVehicles = 1
+        for i, tl in enumerate(self.setTLs):
+            vehicles = self.env.traffic_signals[tl].get_total_vehicles() + 1
+            rewardNormalized.append(abs(self.setRewards[-1][i])*vehicles)
+            totalVehicles += vehicles
+        # print(self.setRewards[-1], sum(rewardNormalized)/totalVehicles)
+        self.rewards.append(sum(rewardNormalized)/totalVehicles)
+
+        self.qTable[s][a] = self.qTable[s][a] + self.alpha*(self.rewards[-1] + self.gamma*max(self.qTable[s1]) - self.qTable[s][a])
+        self.acc_reward += self.rewards[-1]
+
+        rewardPerformance = []
+        for r in self.rewards[-10:]:
+            rewardPerformance.append(r)
+
+        # print(mean(rewardPerformance))
+        self.performance = mean(rewardPerformance)
 
     def addGroup(self, TL):
         if self.env.traffic_signals[TL].inGroup == False:
@@ -114,14 +130,15 @@ class Groups:
         else:
             self.done = False
 
-
     def removingGroup(self):
-        avg = self.performance/len(self.setRewards)
         removed = []
         for tl in range(0, len(self.setTLs)):
-            if abs(self.setRewards[-1][tl]) < avg*self.threshold and abs(self.setRewards[-1][tl]) != 0:
+            tlPerformance = []
+            # print(self.setRewards[-10:], self.setTLs)
+            for r in self.setRewards[-10:]:
+                tlPerformance.append(abs(r[tl]))
+            if mean(tlPerformance) < self.performance*self.threshold and abs(self.setRewards[-1][tl]) != 0:
                 removed.append(self.setTLs[tl])
-                # print(self.setRewards[-1][tl], avg*self.threshold)
                 # print("MUITO RUIM!!!", self.setTLs[tl])
         return removed
 

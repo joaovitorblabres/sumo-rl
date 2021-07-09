@@ -25,7 +25,7 @@ class EpsilonGreedy:
 
 class EpsilonGreedyGroups:
 
-    def __init__(self, initial_epsilon=1.0, min_epsilon=0.0, decay=0.99):
+    def __init__(self, initial_epsilon=0.1, min_epsilon=0.05, decay=1):
         self.initial_epsilon = initial_epsilon
         self.epsilon = initial_epsilon
         self.min_epsilon = min_epsilon

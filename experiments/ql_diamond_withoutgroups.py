@@ -15,16 +15,21 @@ from sumo_rl import SumoEnvironment
 from sumo_rl.agents import QLAgent
 from sumo_rl.exploration import EpsilonGreedy
 
+def csv_make_dir(type, data, out_csv):
+    type_csv = f'{out_csv}_DATA_{run}_{ep}/{type}.csv'
+    os.makedirs( os.path.dirname(type_csv), exist_ok=True )
+    df = pd.DataFrame( data )
+    df.to_csv(type_csv, index=False)
 
 if __name__ == '__main__':
 
     prs = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                   description="""Q-Learning Diamond Network""")
     prs.add_argument("-route", dest="route", type=str, default='nets/diamond/DiamondTLs.rou.xml', help="Route definition xml file.\n")
-    prs.add_argument("-a", dest="alpha", type=float, default=0.1, required=False, help="Alpha learning rate.\n")
+    prs.add_argument("-a", dest="alpha", type=float, default=0.0001, required=False, help="Alpha learning rate.\n")
     prs.add_argument("-g", dest="gamma", type=float, default=0.99, required=False, help="Gamma discount rate.\n")
     prs.add_argument("-e", dest="epsilon", type=float, default=1, required=False, help="Epsilon.\n")
-    prs.add_argument("-me", dest="min_epsilon", type=float, default=0.0, required=False, help="Minimum epsilon.\n")
+    prs.add_argument("-me", dest="min_epsilon", type=float, default=0.05, required=False, help="Minimum epsilon.\n")
     prs.add_argument("-d", dest="decay", type=float, default=0.95, required=False, help="Epsilon decay.\n")
     prs.add_argument("-mingreen", dest="min_green", type=int, default=10, required=False, help="Minimum green time.\n")
     prs.add_argument("-maxgreen", dest="max_green", type=int, default=50, required=False, help="Maximum green time.\n")
@@ -64,24 +69,65 @@ if __name__ == '__main__':
         for ep in range(1, args.eps+1):
             print("RUN =", run, "EP =", ep)
             done = {'__all__': False}
-            density = {ts: [] for ts in ql_agents.keys()}
+            density = {'step_time': []}
+            for ts in ql_agents.keys():
+                density[ts] = []
+            for ts in ql_agents.keys():
+                density[ts+"s_a_ns_r"] = []
             # print(density,len(env.ts_ids))
-            infos = []
+
+            total_queued = {ts: [] for ts in ql_agents.keys()}
+            lanes_density = {ts: [] for ts in ql_agents.keys()}
+            lanes_queue = {ts: [] for ts in ql_agents.keys()}
+            out_lanes_density = {ts: [] for ts in ql_agents.keys()}
+            pressure = {ts: [] for ts in ql_agents.keys()}
+            waiting_time_per_lane = {ts: [] for ts in ql_agents.keys()}
+
             if args.fixed:
                 while not done['__all__']:
                     _, _, done, _ = env.step({})
             else:
                 while not done['__all__']:
                     actions = {ts: ql_agents[ts].act() for ts in ql_agents.keys()}
+                    density['step_time'].append(env.sim_step)
                     for ts in env.traffic_signals:
                         density[ts].append(env.traffic_signals[ts].get_lanes_density())
+                        total_queued[ts].append( env.traffic_signals[ts].get_total_queued() )
+                        pressure[ts].append( env.traffic_signals[ts].get_pressure() )
+                        lanes_density[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_lanes_density()) } )
+                        lanes_queue[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_lanes_queue()) } )
+                        out_lanes_density[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].out_lanes, env.traffic_signals[ts].get_out_lanes_density()) } )
+                        waiting_time_per_lane[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_waiting_time_per_lane()) } )
+
+
+                    states = {ts: [] for ts in ql_agents.keys()}
+                    for ts in env.traffic_signals:
+                        states[ts] = ql_agents[ts].state
 
                     s, r, done, _ = env.step(action=actions)
+
+                    # print(r, env.traffic_signals)
+
+                    for ts in env.traffic_signals:
+                        next_state=env.encode(s[ts], ts)
+                        density[ts+"s_a_ns_r"].append([states[ts], actions[ts], next_state, r[ts]])
+
+                    # print(density)#; exit()
 
                     for agent_id in s.keys():
                         ql_agents[agent_id].learn(next_state=env.encode(s[agent_id], agent_id), reward=r[agent_id])
 
             env.save_csv(out_csv, run, ep)
+            types = [   ['total_queued', total_queued],
+                    ['lanes_queue', lanes_queue],
+                    ['lanes_density', lanes_density],
+                    ['out_lanes_density', out_lanes_density],
+                    ['pressure', pressure],
+                    ['waiting_time_per_lane', waiting_time_per_lane]
+                ]
+            for type,data in types:
+                csv_make_dir( type, data, out_csv  )
+
             df = pd.DataFrame(env.metrics)
             twt.append(df['total_wait_time'].sum())
             density_csv = out_csv+'_{}_{}_densities.csv'.format(run, ep)

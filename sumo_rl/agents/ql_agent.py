@@ -14,9 +14,9 @@ class QLAgent:
         self.gamma = gamma
         self.groupAction = None
         self.groupActing = False
-        self.epsilonGroup = 1
-        self.decayGroup = 0.999
-        self.minEpsilonGroup = 0.5
+        self.epsilonGroup = 0.2
+        self.decayGroup = 1
+        self.minEpsilonGroup = 0.05
         self.q_table = {self.state: [0 for _ in range(action_space.n)]}
         self.exploration = exploration_strategy
         self.acc_reward = 0
@@ -24,7 +24,7 @@ class QLAgent:
     def act(self):
         if self.groupActing:
             # print(self.groupAction, self.state, self.action_space, self.epsilonGroup)
-            if np.random.rand() > self.epsilonGroup:
+            if np.random.rand() < self.epsilonGroup:
                 self.action = self.groupAction
                 # print("GROUP", self.action, self.groupAction)
             else:

@@ -69,15 +69,38 @@ def foundAllNeighbours(env):
                             vizinhos[ts_j] = [ts_i]
     return vizinhos
 
+def BFS(graph, s, distances):
+    visited = [False] * (len(graph.keys()))
+    queue = []
+
+    queue.append(s)
+    # print(s, end = " ")
+    visited[list(graph).index(s)] = True
+    initial = list(graph).index(s)
+
+    while queue:
+        s = queue.pop(0)
+        # print(s, end = " ")
+        for i in graph[s]:
+            if visited[list(graph).index(i)] == False:
+                # print(initial)
+                distances[initial][list(graph).index(i)] = distances[initial][list(graph).index(s)] + 1
+                queue.append(i)
+                visited[list(graph).index(i)] = True
+    # print()
+    # print(distances)
+
 if __name__ == '__main__':
 
     prs = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                   description="""Q-Learning Diamond Network""")
-    prs.add_argument("-route", dest="route", type=str, default='nets/diamond/DiamondTLs.rou.alt.xml', help="Route definition xml file.\n")
+    prs.add_argument("-route", dest="route", type=str, default='nets/diamond/DiamondTLs.rou.xml', help="Route definition xml file.\n")
     prs.add_argument("-a", dest="alpha", type=float, default=0.1, required=False, help="Alpha learning rate.\n")
     prs.add_argument("-ag", dest="alpha_group", type=float, default=0.1, required=False, help="Group Alpha learning rate.\n")
     prs.add_argument("-g", dest="gamma", type=float, default=0.99, required=False, help="Gamma discount rate.\n")
     prs.add_argument("-gg", dest="gamma_group", type=float, default=0.99, required=False, help="Group Gamma discount rate.\n")
+    prs.add_argument("-g0", dest="g_zero", type=int, default=3, required=False, help="Groups initial amount.\n")
+    prs.add_argument("-gt", dest="threshold", type=float, default=0.2, required=False, help="Performance threshold to remove an agent from a group (0, 1].\n")
     prs.add_argument("-e", dest="epsilon", type=float, default=1, required=False, help="Epsilon.\n")
     prs.add_argument("-me", dest="min_epsilon", type=float, default=0.1, required=False, help="Minimum epsilon.\n")
     prs.add_argument("-d", dest="decay", type=float, default=0.95, required=False, help="Epsilon decay.\n")
@@ -88,16 +111,16 @@ if __name__ == '__main__':
     prs.add_argument("-ns", dest="ns", type=int, default=42, required=False, help="Fixed green time for NS.\n")
     prs.add_argument("-we", dest="we", type=int, default=42, required=False, help="Fixed green time for WE.\n")
     prs.add_argument("-s", dest="seconds", type=int, default=6000, required=False, help="Number of simulation seconds.\n")
-    prs.add_argument("-t", dest="teleport", type=int, default=300, required=False, help="Number of simulation seconds.\n")
+    prs.add_argument("-t", dest="teleport", type=int, default=200, required=False, help="Number of simulation seconds.\n")
     prs.add_argument("-v", action="store_true", default=False, help="Print experience tuple.\n")
     prs.add_argument("-eps", dest="eps", type=int, default=1, help="Number of episodes.\n")
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
-    experiment_time = str(datetime.now()).split('.')[0]
-    out_csv = 'outputs/diamond_tests/{}_alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}'.format(experiment_time, args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay)
-    g0 = 3
+    experiment_time = str(datetime.now()).split('.')[0].split(' ')
+    out_csv = 'outputs/groups_diamond/alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}_g0{}_gt{}/{}/{}/'.format(args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay, args.g_zero, args.threshold, experiment_time[0], experiment_time[1])
+    g0 = args.g_zero
     theta = 2
-    threshold = 0.2
+    threshold = args.threshold
     numberOfSingletons = 0
     backupGroups = {}
     lastSecond = args.seconds
@@ -115,12 +138,17 @@ if __name__ == '__main__':
     initial_states = env.reset()
 
     vizinhos = foundAllNeighbours(env)
+    # distances = [[0 for x in range(len(vizinhos.keys()))] for y in range(len(vizinhos.keys()))]
+    # for ts in vizinhos.keys():
+        # BFS(vizinhos, ts, distances)
+    # for dist in distances:
+    #     print(dist)
+    # exit();
     for ts in vizinhos.keys():
         env.neighbours[ts] = vizinhos[ts]
 
     for run in range(1, args.runs+1):
         initial_states = env.reset()
-        env.run = run
         lastSecond = args.seconds
 
         ql_agents = {ts: QLAgent(starting_state=env.encode(initial_states[ts], ts),
@@ -137,7 +165,7 @@ if __name__ == '__main__':
             # print(groups); exit()
         for g in groups.keys():
             groups[g].addState(groups[g].setNextStates)
-            groups[g].state = copy.deepcopy(groups[g].setNextStates)
+            groups[g].state = copy.copy(groups[g].setNextStates)
             groups[g].setNextStates = []
 
         TSGroup = []
@@ -157,7 +185,6 @@ if __name__ == '__main__':
             for g in groups.keys():
                 groups[g].createdAt = env.sim_step
 
-            infos = []
             if args.fixed:
                 while not done['__all__']:
                     _, _, done, _ = env.step({})
@@ -169,7 +196,7 @@ if __name__ == '__main__':
                     if numberOfSingletons/len(env.ts_ids) > 0.5:
                         print("REAGRUPANDO")
                         for g in groups.keys():
-                            backupGroups[groups[g].printTLs()] = copy.deepcopy(groups[g])
+                            backupGroups[groups[g].printTLs()] = copy.copy(groups[g])
                             backupGroups[groups[g].printTLs()].id = None
 
                         for agent_id in env.ts_ids:
@@ -184,13 +211,13 @@ if __name__ == '__main__':
                         groups = groupingAgents(env.ts_ids, g0, theta, env, threshold)
                         for g in list(groups):
                             if groups[g].printTLs() in backupGroups.keys():
-                                groups[g] = copy.deepcopy(backupGroups[groups[g].printTLs()])
+                                groups[g] = copy.copy(backupGroups[groups[g].printTLs()])
                                 groups[g].id = g
                                 for agent_id in groups[g].setTLs:
                                     env.traffic_signals[agent_id].groupID = g
                                     env.traffic_signals[agent_id].inGroup = True
                                     ql_agents[agent_id].groupActing = False
-                                    ql_agents[agent_id].epsilonGroup = 1
+                                    ql_agents[agent_id].epsilonGroup = 0.2
                                 # print(groups[g], backupGroups)
                             else:
                                 for agent_id in groups[g].setTLs:
@@ -199,14 +226,14 @@ if __name__ == '__main__':
                                     groups[g].setRewards[-1].append(r[agent_id])
 
                                 groups[g].addState(groups[g].setNextStates)
-                                groups[g].state = copy.deepcopy(groups[g].setNextStates)
+                                groups[g].state = copy.copy(groups[g].setNextStates)
                                 groups[g].setNextStates = []
                             groups[g].createdAt = env.sim_step
 
                     # ORGANIZAR MELHOR
                     actionsGroups = {}
                     for g in groups.keys():
-                        if env.sim_step > lastSecond*0.1 + groups[g].createdAt: # espera um tempo para começar a agir os agentes dos grupos
+                        if env.sim_step > lastSecond*0.05 + groups[g].createdAt: # espera um tempo para começar a agir os agentes dos grupos
                             # print("tá entrando")
                             actionsGroups[g] = groups[g].act().replace('[', '').replace(']', '').split(',')
                             for agent_id in range(0, len(groups[g].setTLs)):
@@ -214,7 +241,7 @@ if __name__ == '__main__':
                                 ql_agents[groups[g].setTLs[agent_id]].groupAction = int(actionsGroups[g][agent_id])
                                 # print(groups[g], actionsGroups[g][agent_id], ql_agents[groups[g].setTLs[agent_id]].groupAction, groups[g].setTLs[agent_id], env.ts_ids[agent_id])
 
-                    # print(ql_agents.keys(), env.sim_step)
+                    print(ql_agents.keys(), env.sim_step)
                     actions = {ts: ql_agents[ts].act() for ts in ql_agents.keys()}
 
                     # Updates groups actions
@@ -246,18 +273,18 @@ if __name__ == '__main__':
                         groups[g].addAction(groups[g].action)
                         groups[g].learn()
 
-                        if env.sim_step > lastSecond*0.2 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
+                        if env.sim_step > lastSecond*0.1 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
                             # print("tá entrando para remover")
                             removed = groups[g].removingGroup()
                             if removed:
                                 print("GROUPS BEING REMOVED->", groups[g], removed)
-                                backupGroups[groups[g].printTLs()] = copy.deepcopy(groups[g])
+                                backupGroups[groups[g].printTLs()] = copy.copy(groups[g])
                                 newGroupTLs = []
                                 for agent_id in groups[g].setTLs:
                                     env.traffic_signals[agent_id].groupID = None
                                     env.traffic_signals[agent_id].inGroup = False
                                     ql_agents[agent_id].groupActing = False
-                                    ql_agents[agent_id].epsilonGroup = 1
+                                    ql_agents[agent_id].epsilonGroup = 0.2
 
                                 # for agent_id in s.keys():
                                     # print(env.traffic_signals[agent_id].groupID)
@@ -270,13 +297,13 @@ if __name__ == '__main__':
                                     newGroupID = int(list(groups.keys())[-1]) + 1
                                     newGroupName = (';'.join(newGroupTLs))
                                     if newGroupName in backupGroups.keys():
-                                        groups[newGroupID] = copy.deepcopy(backupGroups[newGroupName])
+                                        groups[newGroupID] = copy.copy(backupGroups[newGroupName])
                                         groups[newGroupID].id = newGroupID
                                         for TL in newGroupTLs:
                                             env.traffic_signals[TL].groupID = newGroupID
                                             env.traffic_signals[TL].inGroup = True
                                             ql_agents[agent_id].groupActing = False
-                                            ql_agents[agent_id].epsilonGroup = 1
+                                            ql_agents[agent_id].epsilonGroup = 0.2
                                     else:
                                         groups[newGroupID] = Groups(newGroupID, env, threshold, args.alpha_group, args.gamma_group)
                                         for TL in newGroupTLs:
@@ -323,4 +350,3 @@ if __name__ == '__main__':
             if ep == args.eps:
                 env.close()
         print(twt)
-        env.run += 1

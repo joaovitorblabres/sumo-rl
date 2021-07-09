@@ -33,6 +33,7 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 def plot_df(df, color, xaxis, yaxis, ma=1, label=''):
     df[yaxis] = pd.to_numeric(df[yaxis], errors='coerce')  # convert NaN string to NaN value
+    # plt.ylim(0, 100000)
 
     mean = df.groupby(xaxis).mean()[yaxis]
     std = df.groupby(xaxis).std()[yaxis]
@@ -42,11 +43,12 @@ def plot_df(df, color, xaxis, yaxis, ma=1, label=''):
 
     x = df.groupby(xaxis)[xaxis].mean().keys().values
     plt.plot(x, mean, label=label, color=color, linestyle=next(dashes_styles))
+    print(max(mean))
+    # plt.plot(x, df.groupby(xaxis).mean()['vehicles'], label='vehicles')
     plt.fill_between(x, mean + std, mean - std, alpha=0.25, color=color, rasterized=True)
-    # print(mean, std, df.groupby(xaxis).sum())
 
     #plt.ylim([0,200])
-    #plt.xlim([40000, 70000])
+    # plt.xlim([1502760, 1506970])
 
 
 if __name__ == '__main__':
@@ -72,7 +74,9 @@ if __name__ == '__main__':
     # File reading and grouping
     for file in args.f:
         main_df = pd.DataFrame()
-        for f in glob.glob(file+'*'):
+        print(file)
+        # for f in glob.glob(file+'_r*'):
+        for f in glob.glob(file+'merge*'):
             df = pd.read_csv(f, sep=args.sep)
             if main_df.empty:
                 main_df = df
@@ -91,6 +95,7 @@ if __name__ == '__main__':
     plt.ylabel(args.ylabel)
     plt.xlabel(args.xlabel)
     plt.ylim(bottom=0)
+    # main_df.to_csv(args.f[0]+"merged.csv")
 
     if args.output is not None:
         plt.savefig(args.output+'.pdf', bbox_inches="tight")
