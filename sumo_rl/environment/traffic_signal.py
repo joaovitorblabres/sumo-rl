@@ -48,6 +48,7 @@ class TrafficSignal:
         self.discrete_observation_space = spaces.Tuple((
             spaces.Discrete(self.num_green_phases),                       # Green Phase
             #spaces.Discrete(self.max_green//self.delta_time),            # Elapsed time of phase
+            #*(spaces.Discrete(10) for _ in range(2*len(self.lanes))),    # Queue for each lane
             *(spaces.Discrete(10) for _ in range(2*len(self.lanes)))      # Density and stopped-density for each lane
         ))
         self.action_space = spaces.Discrete(self.num_green_phases)

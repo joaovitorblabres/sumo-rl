@@ -18,7 +18,13 @@ from sumo_rl import SumoEnvironment
 from sumo_rl.agents import QLAgent
 from sumo_rl.exploration import EpsilonGreedy
 
-np.random.seed(4937)
+# np.random.seed(4937)
+
+def csv_make_dir(type, data, out_csv):
+    type_csv = f'{out_csv}_DATA_{run}_{ep}/{type}.csv'
+    os.makedirs( os.path.dirname(type_csv), exist_ok=True )
+    df = pd.DataFrame( data )
+    df.to_csv(type_csv, index=False)
 
 def groupingAgents(agents, g0, theta, env, threshold):
     groups = {}
@@ -178,7 +184,20 @@ if __name__ == '__main__':
             print("RUN =", run, "EP =", ep)
 
             done = {'__all__': False}
-            density = {ts: [] for ts in ql_agents.keys()}
+            density = {'step_time': []}
+            for ts in ql_agents.keys():
+                density[ts] = []
+            for ts in ql_agents.keys():
+                density[ts+"s_a_ns_r"] = []
+
+            total_queued = {ts: [] for ts in ql_agents.keys()}
+            lanes_density = {ts: [] for ts in ql_agents.keys()}
+            lanes_queue = {ts: [] for ts in ql_agents.keys()}
+            # out_lanes_density = {ts: [] for ts in ql_agents.keys()}
+            # pressure = {ts: [] for ts in ql_agents.keys()}
+            waiting_time_per_lane = {ts: [] for ts in ql_agents.keys()}
+
+            groupAmout = g0
 
             for agent_id in range(0, len(env.ts_ids)):
                 env.traffic_signals[env.ts_ids[agent_id]].groupID = TSGroup[agent_id]
@@ -191,10 +210,11 @@ if __name__ == '__main__':
             else:
                 while not done['__all__']:
                     # print(env.sim_step)
-
+                    density['step_time'].append(env.sim_step)
                     # ORGANIZAR MELHOR
                     if numberOfSingletons/len(env.ts_ids) > 0.5:
                         print("REAGRUPANDO")
+                        groupAmout = g0
                         for g in groups.keys():
                             backupGroups[groups[g].printTLs()] = copy.copy(groups[g])
                             backupGroups[groups[g].printTLs()].id = None
@@ -233,7 +253,7 @@ if __name__ == '__main__':
                     # ORGANIZAR MELHOR
                     actionsGroups = {}
                     for g in groups.keys():
-                        if env.sim_step > lastSecond*0.05 + groups[g].createdAt: # espera um tempo para começar a agir os agentes dos grupos
+                        if env.sim_step > lastSecond*0.1 + groups[g].createdAt: # espera um tempo para começar a agir os agentes dos grupos
                             # print("tá entrando")
                             actionsGroups[g] = groups[g].act().replace('[', '').replace(']', '').split(',')
                             for agent_id in range(0, len(groups[g].setTLs)):
@@ -241,7 +261,7 @@ if __name__ == '__main__':
                                 ql_agents[groups[g].setTLs[agent_id]].groupAction = int(actionsGroups[g][agent_id])
                                 # print(groups[g], actionsGroups[g][agent_id], ql_agents[groups[g].setTLs[agent_id]].groupAction, groups[g].setTLs[agent_id], env.ts_ids[agent_id])
 
-                    print(ql_agents.keys(), env.sim_step)
+                    # print(ql_agents.keys(), env.sim_step)
                     actions = {ts: ql_agents[ts].act() for ts in ql_agents.keys()}
 
                     # Updates groups actions
@@ -252,8 +272,23 @@ if __name__ == '__main__':
 
                     for ts in env.traffic_signals:
                         density[ts].append(env.traffic_signals[ts].get_lanes_density())
+                        total_queued[ts].append( env.traffic_signals[ts].get_total_queued() )
+                        # pressure[ts].append( env.traffic_signals[ts].get_pressure() )
+                        lanes_density[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_lanes_density()) } )
+                        lanes_queue[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_lanes_queue()) } )
+                        # out_lanes_density[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].out_lanes, env.traffic_signals[ts].get_out_lanes_density()) } )
+                        waiting_time_per_lane[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_waiting_time_per_lane()) } )
+
+                    states = {ts: [] for ts in ql_agents.keys()}
+                    for ts in env.traffic_signals:
+                        states[ts] = ql_agents[ts].state
+
 
                     s, r, done, _ = env.step(action=actions)
+
+                    for ts in env.traffic_signals:
+                        next_state=env.encode(s[ts], ts)
+                        density[ts+"s_a_ns_r"].append([states[ts], actions[ts], next_state, r[ts]])
 
                     next = {}
                     for agent_id in s.keys():
@@ -273,7 +308,7 @@ if __name__ == '__main__':
                         groups[g].addAction(groups[g].action)
                         groups[g].learn()
 
-                        if env.sim_step > lastSecond*0.1 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
+                        if env.sim_step > lastSecond*0.2 + groups[g].createdAt: # espera um tempo para começar a remover os agentes dos grupos
                             # print("tá entrando para remover")
                             removed = groups[g].removingGroup()
                             if removed:
@@ -286,15 +321,17 @@ if __name__ == '__main__':
                                     ql_agents[agent_id].groupActing = False
                                     ql_agents[agent_id].epsilonGroup = 0.2
 
-                                # for agent_id in s.keys():
-                                    # print(env.traffic_signals[agent_id].groupID)
                                 numberOfSingletons += len(removed)
 
                                 for TL in groups[g].setTLs:
                                     if TL not in removed:
                                         newGroupTLs.append(TL)
+
+                                # (len(groups[g].setTLs) - len(removed)) > 1
+
                                 if newGroupTLs:
-                                    newGroupID = int(list(groups.keys())[-1]) + 1
+                                    newGroupID = groupAmout
+                                    groupAmout += 1
                                     newGroupName = (';'.join(newGroupTLs))
                                     if newGroupName in backupGroups.keys():
                                         groups[newGroupID] = copy.copy(backupGroups[newGroupName])
@@ -313,7 +350,7 @@ if __name__ == '__main__':
                                             groups[newGroupID].action.append(actions[TL])
                                             groups[newGroupID].setRewards[-1].append(r[TL])
                                             # print(groups[g].state)
-                                            groups[newGroupID].state.append(groups[g].state[groups[g].setTLs.index(TL)])
+                                            groups[newGroupID].state.append(states[TL])
 
                                         # print(groups[newGroupID].setNextStates, groups[newGroupID].action, groups[newGroupID].state)
                                         # x = input()
@@ -323,6 +360,7 @@ if __name__ == '__main__':
                                         # groups[newGroupID].learn()
                                         groups[newGroupID].action = []
                                     groups[newGroupID].createdAt = env.sim_step
+
                                 del groups[g]
 
                         if g in groups.keys():
@@ -333,12 +371,22 @@ if __name__ == '__main__':
                         # print(agent_id, env.traffic_signals[agent_id].groupID)
 
             env.save_csv(out_csv, run, ep)
+            types = [   ['total_queued', total_queued],
+                    ['lanes_queue', lanes_queue],
+                    ['lanes_density', lanes_density],
+                    # ['out_lanes_density', out_lanes_density],
+                    # ['pressure', pressure],
+                    ['waiting_time_per_lane', waiting_time_per_lane]
+                ]
+            for type,data in types:
+                csv_make_dir( type, data, out_csv  )
+
             df = pd.DataFrame(env.metrics)
             twt.append(df['total_wait_time'].sum())
-            density_csv = out_csv+'_densities_run{}_ep{}.csv'.format(run, ep)
-            os.makedirs(os.path.dirname(density_csv), exist_ok=True)
-            df = pd.DataFrame(density)
-            df.to_csv(density_csv, index=False)
+            # density_csv = out_csv+'_densities_run{}_ep{}.csv'.format(run, ep)
+            # os.makedirs(os.path.dirname(density_csv), exist_ok=True)
+            # df = pd.DataFrame(density)
+            # df.to_csv(density_csv, index=False)
             lastSecond = env.sim_step
 
             TSGroup = []

@@ -1,11 +1,12 @@
 import numpy as np
+import random
 
 from sumo_rl.exploration.epsilon_greedy import EpsilonGreedy
 
 
 class QLAgent:
 
-    def __init__(self, starting_state, state_space, action_space, alpha=0.5, gamma=0.95, exploration_strategy=EpsilonGreedy()):
+    def __init__(self, starting_state, state_space, action_space, alpha=0.1, gamma=0.95, exploration_strategy=EpsilonGreedy()):
         self.state = starting_state
         self.state_space = state_space
         self.action_space = action_space
@@ -37,7 +38,7 @@ class QLAgent:
 
     def learn(self, next_state, reward, done=False):
         if next_state not in self.q_table:
-            self.q_table[next_state] = [0 for _ in range(self.action_space.n)]
+            self.q_table[next_state] = [random.uniform(-1, 1) for _ in range(self.action_space.n)]
 
         s = self.state
         s1 = next_state

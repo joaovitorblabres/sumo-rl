@@ -8,6 +8,7 @@ else:
 import traci
 import numpy as np
 import copy
+import random
 from gym import spaces
 from statistics import mean
 from sumo_rl.exploration.epsilon_greedy import EpsilonGreedyGroups
@@ -48,7 +49,7 @@ class Groups:
         try:
             if list(self.actionToInt):
                 # print("GROUP:", self, "\n i to a", self.intToAction, "\n a to i", self.actionToInt,"\n s to i", self.stateToInt,"\n s", self.state, "\n q", self.qTable)
-                self.choice = self.exploration.choose(self.qTable, self.stateToInt[repr(self.state)], self.actionToInt)
+                self.choice = self.exploration.choose(self.qTable, [rep for rep, state in self.intToState.items() if state == repr(self.state)][0], self.actionToInt)
                 if self.choice < len(self.intToAction.keys()):
                     self.actionToTLs = self.intToAction[self.choice]
                 else:
@@ -62,16 +63,19 @@ class Groups:
     def learn(self, done=False):
         # print("GROUP: ", self, "\n s", self.stateToInt, self.state, "\n a to i", self.actionToInt, "\n a", self.action, "\n r", self.setRewards[-1], "\n s1", self.setNextStates)
         # print("GROUP: ", self, "\n s", self.state, "\n a", self.action, "\n r", self.setRewards[-1], "\n s1", self.setNextStates, "\n q", self.qTable)
-        s = self.stateToInt[repr(self.state)]
-        s1 = self.stateToInt[repr(self.setNextStates)]
+        s = [rep for rep, state in self.intToState.items() if state == repr(self.state)][0]
+        s1 = [rep for rep, state in self.intToState.items() if state == repr(self.setNextStates)][0]
+        # print(self.state, self.setNextStates, s, s1)
+        # s = self.stateToInt[repr(self.state)]
+        # s1 = self.stateToInt[repr(self.setNextStates)]
         a = self.actionToInt[repr(self.action)]
         # print(self.action_space)
 
         if s1 not in self.qTable:
-            self.qTable[s1] = [0 for _ in range(self.action_space*10)]
+            self.qTable[s1] = [random.uniform(-1, 1) for _ in range(self.action_space*10)]
 
         if s not in self.qTable:
-            self.qTable[s] = [0 for _ in range(self.action_space*10)]
+            self.qTable[s] = [random.uniform(-1, 1) for _ in range(self.action_space*10)]
 
         self.state = copy.deepcopy(self.setNextStates)
         self.setNextStates = []
@@ -92,6 +96,7 @@ class Groups:
         for r in self.rewards[-10:]:
             rewardPerformance.append(r)
 
+        self.rewards = self.rewards[-10:]
         # print(mean(rewardPerformance))
         self.performance = mean(rewardPerformance)
 
@@ -107,9 +112,9 @@ class Groups:
 
     def addState(self, state):
         s = repr(state)
-        l = len(self.stateToInt)
-        if s not in self.stateToInt:
-            self.stateToInt[s] = l
+        l = len(self.intToState)
+        if l not in self.intToState:
+            # self.stateToInt[s] = l
             self.intToState[l] = s
         # print("group state", self.stateToInt, len(self.state), s, self.intToState)
 

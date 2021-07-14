@@ -62,7 +62,8 @@ class Plot_Graph:
                 plt.close()
 
         df.plot( kind='line', x='steps', y=y, lw=1 )
-
+        plt.title(file_name.split("/")[-1][:-4])
+        # plt.subplots(figsize=(8, 6))
         plt.savefig( f'{file_name[:-4]}_plot.png', dpi=500 )
         plt.close()
 

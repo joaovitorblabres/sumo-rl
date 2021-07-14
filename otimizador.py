@@ -43,13 +43,15 @@ eps = 50
 # params[2] = {'alpha': 0.12, 'gamma': 0.86, 'epsilon': 0.05, 'decay': 1}
 # params[3] = {'alpha': 0.11, 'gamma': 0.86, 'epsilon': 0.05, 'decay': 1}
 # params[4] = {'alpha': 0.14, 'gamma': 0.87, 'epsilon': 0.05, 'decay': 1}
-alphas = [0.0001, 0.001, 0.01, 0.05, 0.10, 0.15, 0.20, 0.30]
+alphas = [0.5]
+# alphas = [0.01, 0.05, 0.10, 0.15, 0.20, 0.30, 0.4, 0.5]
 decays = [0.05]
 alphasGroups = [0]
-# alphasGroups = [0.05, 0.10, 0.15, 0.20]
-gammas = [0.5, 0.6, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 0.99]
+alphasGroups = [0.05, 0.10, 0.15, 0.20, 0.3, 0.4, 0.5]
+gammas = [0.95]
+# gammas = [0.80, 0.85, 0.90, 0.95, 0.99]
 gammasGroups = [0]
-# gammasGroups = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+gammasGroups = [0.80, 0.85, 0.90, 0.95, 0.99]
 resultados = {}
 for alpha in alphas:
     resultados[alpha] = {}
@@ -60,8 +62,8 @@ for alpha in alphas:
             for gammaG in gammasGroups:
                 resultados[alpha][alphaG][gamma][gammaG] = {}
                 for decay in decays:
-                    process = subprocess.Popen(["python3", "experiments/ql_diamond_withoutgroups.py", "-s", "20000", "-a", str(alpha), "-g", str(gamma), "-e", str(decay), "-d", str(1), "-runs", str(runs), "-eps", str(eps)], stdout=subprocess.PIPE)
-                    # process = subprocess.Popen(["python3", "experiments/ql_diamond.py", "-s", "20000", "-a", str(alpha), "-g", str(gamma), "-ag", str(alphaG), "-gg", str(gammaG), "-e", str(decay), "-d", str(1), "-runs", str(runs), "-eps", str(eps)], stdout=subprocess.PIPE)
+                    # process = subprocess.Popen(["python3", "experiments/ql_diamond_withoutgroups.py", "-s", "20000", "-a", str(alpha), "-g", str(gamma), "-e", str(decay), "-d", str(1), "-runs", str(runs), "-eps", str(eps)], stdout=subprocess.PIPE)
+                    process = subprocess.Popen(["python3", "experiments/ql_diamond.py", "-s", "20000", "-a", str(alpha), "-g", str(gamma), "-ag", str(alphaG), "-gg", str(gammaG), "-e", str(decay), "-d", str(1), "-runs", str(runs), "-eps", str(eps)], stdout=subprocess.PIPE)
                     stdout = process.communicate()[0]
                     values = str(stdout).split('\\n')[-2].replace("[", "").replace("]", "").replace(" ", "").replace('\'', '').split(",")
                     values = list(map(float, values))
