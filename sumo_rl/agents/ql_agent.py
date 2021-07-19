@@ -38,7 +38,7 @@ class QLAgent:
 
     def learn(self, next_state, reward, done=False):
         if next_state not in self.q_table:
-            self.q_table[next_state] = [random.uniform(-1, 1) for _ in range(self.action_space.n)]
+            self.q_table[next_state] = [random.uniform(0, 0) for _ in range(self.action_space.n)]
 
         s = self.state
         s1 = next_state

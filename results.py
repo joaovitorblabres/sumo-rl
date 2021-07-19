@@ -3,6 +3,7 @@ import copy
 import pandas as pd
 import argparse
 import glob
+from matplotlib import pyplot as plt
 import os
 
 def bests(results):
@@ -10,6 +11,7 @@ def bests(results):
     means = []
     mins = []
     moving = []
+    avg = []
     params = {}
     i = 0
     for alpha in results.keys():
@@ -20,6 +22,7 @@ def bests(results):
                         sums.append(results[alpha][alphaG][gamma][gammaG][decay]['sum'])
                         mins.append(min(results[alpha][alphaG][gamma][gammaG][decay]['values']))
                         means.append(results[alpha][alphaG][gamma][gammaG][decay]['mean'])
+                        avg.append(results[alpha][alphaG][gamma][gammaG][decay]['avgs'])
                         moving.append(sum(results[alpha][alphaG][gamma][gammaG][decay]['values'][-10:])/10)
                         params[i] = "-".join([str(alpha), str(alphaG), str(gamma), str(gammaG), str(decay)])
                         # print(alpha, alphaG, gamma, gammaG, decay, results[alpha][alphaG][gamma][gammaG][decay]['mean'], results[alpha][alphaG][gamma][gammaG][decay]['sum'], results[alpha][alphaG][gamma][gammaG][decay]['values'][-20:], i)
@@ -30,6 +33,7 @@ def bests(results):
     moving.sort()
     print(moving[:10], [params[original.index(val)] for val in moving[:10]], [original.index(val) for val in moving[:10]])
     print(min(sums), params[sums.index(min(sums))])
+    # print(avg)
     print(min(mins), params[mins.index(min(mins))])
     print(min(means), params[means.index(min(means))])
 
@@ -54,14 +58,14 @@ for file in args.f:
                 results[alpha][0][gamma] = {}
                 results[alpha][0][gamma][0] = {}
                 if eps not in results[alpha][0][gamma][0].keys():
-                    results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[]}
+                    results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
         if gamma not in results[alpha][0].keys():
             results[alpha][0][gamma] = {}
             results[alpha][0][gamma][0] = {}
             if eps not in results[alpha][0][gamma][0].keys():
-                results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[]}
+                results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
         if eps not in results[alpha][0][gamma][0].keys():
-            results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[]}
+            results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
 
         for data in glob.glob(alphas+"/*"):
             for hora in glob.glob(data+"/*"):
@@ -75,7 +79,17 @@ for file in args.f:
 
                     all = df.groupby('step_time').sum()['total_wait_time']
                     results[alpha][0][gamma][0][eps]['values'].append(sum(all))
-                results[alpha][0][gamma][0][eps]['mean'].append(statistics.mean(results[alpha][0][gamma][0][eps]['values']))
-                results[alpha][0][gamma][0][eps]['sum'].append(sum(results[alpha][0][gamma][0][eps]['values']))
+                    results[alpha][0][gamma][0][eps]['avgs'].append(statistics.mean(all))
+                # results[alpha][0][gamma][0][eps]['mean'].append(statistics.mean(results[alpha][0][gamma][0][eps]['values']))
+                # results[alpha][0][gamma][0][eps]['sum'].append(sum(results[alpha][0][gamma][0][eps]['values']))
+                if any([val < 10000 for val in results[alpha][0][gamma][0][eps]['avgs']]):
+                    print(hora)
+                    # plt.ylim([0,20000])
+                    plt.plot(range(0,len(results[alpha][0][gamma][0][eps]['avgs'][:])), results[alpha][0][gamma][0][eps]['avgs'][:], 'ro-')
+                    plt.xlabel("episodes")
+                    plt.ylabel("mean wait time")
+                    plt.title(f)
+                    plt.show()
+                results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
 
-bests(results)
+# bests(results)

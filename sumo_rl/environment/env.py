@@ -210,21 +210,36 @@ class SumoEnvironment(MultiAgentEnv):
 
     # Below functions are for discrete state space
 
+    # def encode(self, state, ts_id):
+    #     phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
+    #     elapsed = self._discretize_elapsed_time(self.traffic_signals[ts_id].time_since_last_phase_change)
+    #     density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
+    #     # tuples are hashable and can be used as key in python dictionary
+    #     # print(tuple([phase] + [elapsed] + density_queue))
+    #     return tuple([phase] + [elapsed] + density_queue)
+        # return tuple([phase] + density_queue)
+
     def encode(self, state, ts_id):
         phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
-        #elapsed = self._discretize_elapsed_time(state[self.num_green_phases])
+        elapsed = self._discretize_elapsed_time(self.traffic_signals[ts_id].time_since_last_phase_change)
         density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
-        return self.radix_encode([phase] + density_queue, ts_id)
+        # return self.radix_encode([phase] + density_queue, ts_id)
+        return self.radix_encode([phase] + [elapsed] + density_queue, ts_id)
 
     def _discretize_density(self, density):
-        return min(int(density*10), 9)
+        # print(density*100)
+        return min(int(density*4), 3)
 
     def _discretize_elapsed_time(self, elapsed):
-        elapsed *= self.max_green
+        # print(elapsed, self.delta_time, min(1, elapsed / self.delta_time))
+        # return min(1, elapsed / self.delta_time)
+        # elapsed *= self.max_green
         for i in range(self.max_green//self.delta_time):
             if elapsed <= self.delta_time + i*self.delta_time:
+                # print(i)
                 return i
-        return self.max_green//self.delta_time -1
+        # print("?", elapsed, elapsed//self.delta_time -1)
+        return elapsed//self.delta_time
 
     def radix_encode(self, values, ts_id):
         res = 0
@@ -232,6 +247,7 @@ class SumoEnvironment(MultiAgentEnv):
         for i in range(len(self.radix_factors)):
             res = res * self.radix_factors[i] + values[i]
 
+        # print(res)
         return int(res)
 
     """ def radix_decode(self, value):

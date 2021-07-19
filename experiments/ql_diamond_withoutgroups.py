@@ -31,7 +31,7 @@ if __name__ == '__main__':
     prs.add_argument("-e", dest="epsilon", type=float, default=1, required=False, help="Epsilon.\n")
     prs.add_argument("-me", dest="min_epsilon", type=float, default=0.05, required=False, help="Minimum epsilon.\n")
     prs.add_argument("-d", dest="decay", type=float, default=0.95, required=False, help="Epsilon decay.\n")
-    prs.add_argument("-mingreen", dest="min_green", type=int, default=10, required=False, help="Minimum green time.\n")
+    prs.add_argument("-mingreen", dest="min_green", type=int, default=5, required=False, help="Minimum green time.\n")
     prs.add_argument("-maxgreen", dest="max_green", type=int, default=50, required=False, help="Maximum green time.\n")
     prs.add_argument("-gui", action="store_true", default=False, help="Run with visualization on SUMO.\n")
     prs.add_argument("-fixed", action="store_true", default=False, help="Run with fixed timing traffic signals.\n")
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0].split(' ')
-    out_csv = 'outputs/bestRandomDiamondWT/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
+    out_csv = 'outputs/testesRandomDiamondWT/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
 
     env = SumoEnvironment(net_file='nets/diamond/DiamondTLs.net.xml',
                           route_file=args.route,
@@ -66,16 +66,16 @@ if __name__ == '__main__':
                                  exploration_strategy=EpsilonGreedy(initial_epsilon=args.epsilon, min_epsilon=args.min_epsilon, decay=args.decay)) for ts in env.ts_ids}
 
         # for ql in list(ql_agents.keys()):
-        #     if ql != 'E5':
-        #         del ql_agents[ql]
+            # if ql == 'E5':
+                # del ql_agents[ql]
 
         twt = []
         for ep in range(1, args.eps+1):
             print("RUN =", run, "EP =", ep)
             done = {'__all__': False}
             density = {'step_time': []}
-            for ts in ql_agents.keys():
-                density[ts] = []
+            # for ts in ql_agents.keys():
+                # density[ts] = []
             for ts in ql_agents.keys():
                 density[ts+"s_a_ns_r"] = []
             # print(density,len(env.ts_ids))
@@ -95,14 +95,13 @@ if __name__ == '__main__':
                     actions = {ts: ql_agents[ts].act() for ts in ql_agents.keys()}
                     density['step_time'].append(env.sim_step)
                     for ts in ql_agents.keys():
-                        density[ts].append(env.traffic_signals[ts].get_lanes_density())
+                        # density[ts].append(env.traffic_signals[ts].get_lanes_density())
                         total_queued[ts].append( env.traffic_signals[ts].get_total_queued() )
                         # pressure[ts].append( env.traffic_signals[ts].get_pressure() )
                         lanes_density[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_lanes_density()) } )
                         lanes_queue[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_lanes_queue()) } )
                         # out_lanes_density[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].out_lanes, env.traffic_signals[ts].get_out_lanes_density()) } )
                         waiting_time_per_lane[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_waiting_time_per_lane()) } )
-
 
                     states = {ts: [] for ts in ql_agents.keys()}
                     for ts in ql_agents.keys():
@@ -130,8 +129,8 @@ if __name__ == '__main__':
                     # ['pressure', pressure],
                     ['waiting_time_per_lane', waiting_time_per_lane]
                 ]
-            for type,data in types:
-                csv_make_dir( type, data, out_csv  )
+            # for type,data in types:
+                # csv_make_dir( type, data, out_csv  )
 
             df = pd.DataFrame(env.metrics)
             twt.append(df['total_wait_time'].sum())
