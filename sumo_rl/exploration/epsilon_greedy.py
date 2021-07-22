@@ -25,17 +25,19 @@ class EpsilonGreedy:
 
 class EpsilonGreedyGroups:
 
-    def __init__(self, initial_epsilon=0.1, min_epsilon=0.05, decay=1):
+    def __init__(self, initial_epsilon=0.05, min_epsilon=0.05, decay=1):
         self.initial_epsilon = initial_epsilon
         self.epsilon = initial_epsilon
         self.min_epsilon = min_epsilon
         self.decay = decay
 
     def choose(self, q_table, state, action_space):
+        # print("choose", action_space)
         if np.random.rand() < self.epsilon:
             action = random.choice(list(action_space.values()))
         else:
             action = np.argmax(q_table[state])
+            # print("choose", action_space, q_table[state])
 
         self.epsilon = max(self.epsilon*self.decay, self.min_epsilon)
         #print(self.epsilon)

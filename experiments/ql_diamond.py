@@ -109,6 +109,7 @@ if __name__ == '__main__':
     prs.add_argument("-g0", dest="g_zero", type=int, default=3, required=False, help="Groups initial amount.\n")
     prs.add_argument("-gt", dest="threshold", type=float, default=0.2, required=False, help="Performance threshold to remove an agent from a group (0, 1].\n")
     prs.add_argument("-e", dest="epsilon", type=float, default=1, required=False, help="Epsilon.\n")
+    prs.add_argument("-eg", dest="groupRecomendation", type=float, default=0.2, required=False, help="Epsilon.\n")
     prs.add_argument("-me", dest="min_epsilon", type=float, default=0.1, required=False, help="Minimum epsilon.\n")
     prs.add_argument("-d", dest="decay", type=float, default=0.95, required=False, help="Epsilon decay.\n")
     prs.add_argument("-mingreen", dest="min_green", type=int, default=10, required=False, help="Minimum green time.\n")
@@ -118,8 +119,9 @@ if __name__ == '__main__':
     prs.add_argument("-ns", dest="ns", type=int, default=42, required=False, help="Fixed green time for NS.\n")
     prs.add_argument("-we", dest="we", type=int, default=42, required=False, help="Fixed green time for WE.\n")
     prs.add_argument("-s", dest="seconds", type=int, default=6000, required=False, help="Number of simulation seconds.\n")
-    prs.add_argument("-t", dest="teleport", type=int, default=200, required=False, help="Number of simulation seconds.\n")
+    prs.add_argument("-t", dest="teleport", type=int, default=200, required=False, help="Time to teleport vehicles.\n")
     prs.add_argument("-v", action="store_true", default=False, help="Print experience tuple.\n")
+    prs.add_argument("-recomendation", action="store_false", default=True, help="Follow group recomendations at a fixed time.\n")
     prs.add_argument("-eps", dest="eps", type=int, default=1, help="Number of episodes.\n")
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
@@ -128,7 +130,6 @@ if __name__ == '__main__':
     g0 = args.g_zero
     theta = 2
     threshold = args.threshold
-    backupGroups = {}
     lastSecond = args.seconds
 
     env = SumoEnvironment(net_file='nets/diamond/DiamondTLs.net.xml',
@@ -154,6 +155,7 @@ if __name__ == '__main__':
         env.neighbours[ts] = vizinhos[ts]
 
     for run in range(1, args.runs+1):
+        backupGroups = {}
         initial_states = env.reset()
         lastSecond = args.seconds
 
@@ -162,6 +164,7 @@ if __name__ == '__main__':
                                  action_space=env.action_spaces(ts),
                                  alpha=args.alpha,
                                  gamma=args.gamma,
+                                 groupRecomendation=args.groupRecomendation,
                                  exploration_strategy=EpsilonGreedy(initial_epsilon=args.epsilon, min_epsilon=args.min_epsilon, decay=args.decay)) for ts in env.ts_ids}
 
         groups = groupingAgents(env.ts_ids, g0, theta, env, threshold)
@@ -180,8 +183,23 @@ if __name__ == '__main__':
 
         twt = []
 
+        groupRecomendation = 0
         for ep in range(1, args.eps+1):
+            if args.recomendation:
+                groupRecomendation = args.groupRecomendation
+            else:
+                if ep % 30 == 0:
+                    groupRecomendation = 0
+                elif ep % 30 == 10:
+                    groupRecomendation = 0.5
+                elif ep % 30 == 20:
+                    groupRecomendation = 1
+
             print("RUN =", run, "EP =", ep)
+
+            for ts in ql_agents.keys():
+                ql_agents[ts].state = env.encode(initial_states[ts], ts)
+                ql_agents[ts].groupRecomendation = groupRecomendation
 
             done = {'__all__': False}
             density = {'step_time': []}
@@ -190,6 +208,7 @@ if __name__ == '__main__':
             for ts in ql_agents.keys():
                 density[ts+"s_a_ns_r"] = []
             density['groups'] = []
+            density['recomendations'] = []
 
             total_queued = {ts: [] for ts in ql_agents.keys()}
             lanes_density = {ts: [] for ts in ql_agents.keys()}
@@ -247,7 +266,7 @@ if __name__ == '__main__':
                                     env.traffic_signals[agent_id].groupID = g
                                     env.traffic_signals[agent_id].inGroup = True
                                     ql_agents[agent_id].groupActing = False
-                                    ql_agents[agent_id].epsilonGroup = 0.2
+                                    ql_agents[agent_id].groupRecomendation = groupRecomendation
                                 # print(groups[g], backupGroups)
                             else:
                                 for agent_id in groups[g].setTLs:
@@ -306,6 +325,7 @@ if __name__ == '__main__':
                         density[ts+"s_a_ns_r"].append([states[ts], actions[ts], next_state, r[ts]])
 
                     density['groups'].append(str(groups))
+                    density['recomendations'].append(groupRecomendation)
                     # print(density['groups'][-1], groups)
 
                     next = {}
@@ -333,6 +353,7 @@ if __name__ == '__main__':
                             removed = groups[g].removingGroup()
                             for tl in removed:
                                 env.traffic_signals[agent_id].inGroup = False
+                                env.traffic_signals[agent_id].groupID = None
 
                             if removed:
                                 print("GROUPS BEING REMOVED->", groups[g], removed)
@@ -342,7 +363,7 @@ if __name__ == '__main__':
                                     env.traffic_signals[agent_id].groupID = None
                                     env.traffic_signals[agent_id].inGroup = False
                                     ql_agents[agent_id].groupActing = False
-                                    ql_agents[agent_id].epsilonGroup = 0.2
+                                    ql_agents[agent_id].groupRecomendation = groupRecomendation
 
                                 for TL in groups[g].setTLs:
                                     if TL not in removed:
@@ -363,7 +384,7 @@ if __name__ == '__main__':
                                             env.traffic_signals[TL].inGroup = True
                                             groups[newGroupID].action.append(actions[TL])
                                             ql_agents[agent_id].groupActing = False
-                                            ql_agents[agent_id].epsilonGroup = 0.2
+                                            ql_agents[agent_id].groupRecomendation = groupRecomendation
                                     else:
                                         groups[newGroupID] = Groups(newGroupID, env, threshold, args.alpha_group, args.gamma_group)
                                         groups[newGroupID].action = []
@@ -402,8 +423,8 @@ if __name__ == '__main__':
                     # ['pressure', pressure],
                     ['waiting_time_per_lane', waiting_time_per_lane]
                 ]
-            for type,data in types:
-                csv_make_dir( type, data, out_csv  )
+            # for type,data in types:
+                # csv_make_dir( type, data, out_csv  )
 
             df = pd.DataFrame(env.metrics)
             twt.append(df['total_wait_time'].sum())

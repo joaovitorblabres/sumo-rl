@@ -72,10 +72,10 @@ class Groups:
         # print(self.action_space*10, self.intToAction, a)
 
         if s1 not in self.qTable:
-            self.qTable[s1] = [random.uniform(-1, 1) for _ in range(self.action_space)]
+            self.qTable[s1] = [random.uniform(0, 0) for _ in range(self.action_space)]
 
         if s not in self.qTable:
-            self.qTable[s] = [random.uniform(-1, 1) for _ in range(self.action_space)]
+            self.qTable[s] = [random.uniform(0, 0) for _ in range(self.action_space)]
 
         self.state = copy.deepcopy(self.setNextStates)
         self.setNextStates = []
@@ -121,10 +121,10 @@ class Groups:
     def addState(self, state):
         l = repr(state)
         s = len(self.intToState)
-        if l not in self.intToState.values():
+        # print("group state", len(self.state), l, self.intToState)
+        if l not in self.intToState.keys():
             # self.stateToInt[s] = l
             self.intToState[l] = s
-        # print("group state", self.stateToInt, len(self.state), s, self.intToState)
 
     def addAction(self, action):
         a = repr(action)
