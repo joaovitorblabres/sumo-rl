@@ -38,16 +38,19 @@ class Groups:
         self.exploration = exploration_strategy
         self.neighbours = []
         self.threshold = threshold
+        self.rewardPerformance = []
         self.done = False
         self.acc_reward = 0
+        self.removed = []
         self.createdAt = 0
+        self.timeCreated = 0
         self.performance = 0
 
     def act(self):
         try:
             if list(self.intToAction):
                 # print("GROUP:", self, "\n i to a", self.intToAction, "\n a to i", self.actionToInt,"\n s to i", self.stateToInt,"\n s", self.state, "\n q", self.qTable)
-                self.choice = self.exploration.choose(self.qTable, self.intToState[repr(self.state)], self.intToAction)
+                self.choice = self.exploration.choose(self.qTable, repr(self.state), self.intToAction)
                 if self.choice in self.intToAction.keys():
                     self.actionToTLs = self.intToAction[self.choice]
                 else:
@@ -55,7 +58,7 @@ class Groups:
                     # self.actionToTLs = self.choice
                 # print(self.choice, self.actionToTLs, self.action_space)
         except Exception as e:
-            # print(self, self.intToAction, self.intToState, self.state, e)
+            print(self, self.intToAction, self.intToState, self.state, e)
             # print(self.intToAction, self.actionToInt, self.choice, self, self.stateToInt)
             exit()
         return self.actionToTLs
@@ -66,10 +69,14 @@ class Groups:
         # s = [rep for rep, state in self.intToState.items() if state == repr(self.state)][0]
         # s1 = [rep for rep, state in self.intToState.items() if state == repr(self.setNextStates)][0]
         # print(self.state, self.setNextStates, s, s1)
-        s = self.intToState[repr(self.state)]
-        s1 = self.intToState[repr(self.setNextStates)]
+        s = repr(self.state)
+        s1 = repr(self.setNextStates)
+        # a = repr(self.action)
+        # s = self.intToState[repr(self.state)]
+        # s1 = self.intToState[repr(self.setNextStates)]
         a = [rep for rep, state in self.intToAction.items() if state == repr(self.action)][0]
         # print(self.action_space*10, self.intToAction, a)
+        self.timeCreated += 1
 
         if s1 not in self.qTable:
             self.qTable[s1] = [random.uniform(0, 0) for _ in range(self.action_space)]
@@ -84,11 +91,11 @@ class Groups:
         totalVehicles = 1
         if self.setRewards:
             for i, tl in enumerate(self.setTLs):
-                if i+1 < len(self.setRewards[-1]):
-                    vehicles = self.env.traffic_signals[tl].get_total_vehicles() + 1
+                if i < len(self.setRewards[-1]):
+                    vehicles = self.env.traffic_signals[tl].get_total_vehicles()
                     rewardNormalized.append(self.setRewards[-1][i]*vehicles)
                     totalVehicles += vehicles
-            # print(self.setRewards[-1], sum(rewardNormalized)/totalVehicles)
+            # print(self, self.setRewards[-1], sum(rewardNormalized)/totalVehicles, totalVehicles, rewardNormalized)
         self.rewards.append(sum(rewardNormalized)/totalVehicles)
         try:
             self.qTable[s][a] = self.qTable[s][a] + self.alpha*(self.rewards[-1] + self.gamma*max(self.qTable[s1]) - self.qTable[s][a])
@@ -97,13 +104,15 @@ class Groups:
             exit();
         self.acc_reward += self.rewards[-1]
 
-        rewardPerformance = []
-        for r in self.rewards[-10:]:
-            rewardPerformance.append(r)
+        self.rewardPerformance = []
+        lastNPorcentage = int(len(self.setRewards)*0.1)
+        # print(int(lastNPorcentage))
+        for r in self.rewards[-lastNPorcentage:]:
+            self.rewardPerformance.append(r)
 
-        self.rewards = self.rewards[-10:]
+        # self.rewards = self.rewards[-10:]
         # print(mean(rewardPerformance))
-        self.performance = mean(rewardPerformance)
+        self.performance = mean(self.rewardPerformance)
 
     def addGroup(self, TL):
         if self.env.traffic_signals[TL].inGroup == False:
@@ -147,7 +156,8 @@ class Groups:
         removed = []
         for tl in range(0, len(self.setTLs)):
             tlPerformance = []
-            for r in self.setRewards[-10:]:
+            lastNPorcentage = int(len(self.setRewards)*0.1)
+            for r in self.setRewards[-lastNPorcentage:]:
                 tlPerformance.append(r[tl])
             gpPerformance = 0
             if self.performance > 0:
@@ -155,11 +165,12 @@ class Groups:
             else:
                 gpPerformance = self.performance*self.threshold + self.performance
 
-            # print(mean(tlPerformance), self.performance, gpPerformance, self.setTLs)
             if self.threshold != 0:
-                if mean(tlPerformance) < gpPerformance and abs(self.setRewards[-1][tl]) != 0:
+                if mean(tlPerformance) < gpPerformance:
                     removed.append(self.setTLs[tl])
+                    self.timeCreated = 0
                 # print("MUITO RUIM!!!", self.setTLs[tl])
+        self.removed = removed
         return removed
 
     def printTLs(self):
@@ -172,4 +183,4 @@ class Groups:
         return str(self)
 
     def __str__(self):
-        return str(self.id) + " : " + self.printTLs() + " - " + self.printNeighbours()
+        return "{Group ID: "+ str(self.id) + ", Agents: " + str(self.setTLs) + ", Neighbours: " + str(self.neighbours) + ", Action: " + str(self.action) + ", Agents Removed: "+ str(self.removed) + ", Regrouped? " + ("YES" if self.timeCreated == 0 else "NO") + "}"

@@ -48,24 +48,34 @@ for file in args.f:
     for alphas in glob.glob(file+"/*"):
         main_df = pd.DataFrame()
         params = alphas.split("_")
-        alpha = params[0].split('/')[-1][5:]
-        gamma = params[1][5:]
-        eps = params[2][3:]
+        alpha = params[1].split('/')[-1][5:]
+        alphaG = params[3][6:]
+        gamma = params[2][5:]
+        gammaG = params[4][6:]
+        eps = params[5][3:]
+        print(alpha, gamma, eps, alphaG, gammaG)
         if alpha not in results.keys():
             results[alpha] = {}
-            results[alpha][0] = {}
-            if gamma not in results[alpha][0].keys():
-                results[alpha][0][gamma] = {}
-                results[alpha][0][gamma][0] = {}
-                if eps not in results[alpha][0][gamma][0].keys():
-                    results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
-        if gamma not in results[alpha][0].keys():
-            results[alpha][0][gamma] = {}
-            results[alpha][0][gamma][0] = {}
-            if eps not in results[alpha][0][gamma][0].keys():
-                results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
-        if eps not in results[alpha][0][gamma][0].keys():
-            results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
+            if alphaG not in results[alpha].keys():
+                results[alpha][alphaG] = {}
+            if gamma not in results[alpha][alphaG].keys():
+                results[alpha][alphaG][gamma] = {}
+                if gammaG not in results[alpha][alphaG][gamma].keys():
+                    results[alpha][alphaG][gamma][gammaG] = {}
+                if eps not in results[alpha][alphaG][gamma][gammaG].keys():
+                    results[alpha][alphaG][gamma][gammaG][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
+        if alphaG not in results[alpha].keys():
+            results[alpha][alphaG] = {}
+        if gamma not in results[alpha][alphaG].keys():
+            results[alpha][alphaG][gamma] = {}
+            if gammaG not in results[alpha][alphaG][gamma].keys():
+                results[alpha][alphaG][gamma][gammaG] = {}
+            if eps not in results[alpha][alphaG][gamma][gammaG].keys():
+                results[alpha][alphaG][gamma][gammaG][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
+        if gammaG not in results[alpha][alphaG][gamma].keys():
+            results[alpha][alphaG][gamma][gammaG] = {}
+        if eps not in results[alpha][alphaG][gamma][gammaG].keys():
+            results[alpha][alphaG][gamma][gammaG][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
 
         for data in glob.glob(alphas+"/*"):
             for hora in glob.glob(data+"/*"):
@@ -78,18 +88,22 @@ for file in args.f:
                         main_df = pd.concat((main_df, df))
 
                     all = df.groupby('step_time').sum()['total_wait_time']
-                    results[alpha][0][gamma][0][eps]['values'].append(sum(all))
-                    results[alpha][0][gamma][0][eps]['avgs'].append(statistics.mean(all))
-                # results[alpha][0][gamma][0][eps]['mean'].append(statistics.mean(results[alpha][0][gamma][0][eps]['values']))
-                # results[alpha][0][gamma][0][eps]['sum'].append(sum(results[alpha][0][gamma][0][eps]['values']))
-                if any([val < 10000 for val in results[alpha][0][gamma][0][eps]['avgs']]):
+                    results[alpha][alphaG][gamma][gammaG][eps]['values'].append(sum(all))
+                    results[alpha][alphaG][gamma][gammaG][eps]['avgs'].append(statistics.mean(all))
+                results[alpha][alphaG][gamma][gammaG][eps]['mean'].append(statistics.mean(results[alpha][alphaG][gamma][gammaG][eps]['values']))
+                results[alpha][alphaG][gamma][gammaG][eps]['sum'].append(sum(results[alpha][alphaG][gamma][gammaG][eps]['values']))
+                if any([val < 10000 for val in results[alpha][alphaG][gamma][gammaG][eps]['avgs']]):
+                    meanDF = pd.DataFrame(results[alpha][alphaG][gamma][gammaG][eps]['avgs'][:])
                     print(hora)
                     # plt.ylim([0,20000])
-                    plt.plot(range(0,len(results[alpha][0][gamma][0][eps]['avgs'][:])), results[alpha][0][gamma][0][eps]['avgs'][:], 'ro-')
+                    plt.plot(range(0,len(results[alpha][alphaG][gamma][gammaG][eps]['avgs'][:])), results[alpha][alphaG][gamma][gammaG][eps]['avgs'][:], 'ro-')
                     plt.xlabel("episodes")
                     plt.ylabel("mean wait time")
                     plt.title(f)
-                    plt.show()
-                results[alpha][0][gamma][0][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
+                    # plt.show()
+                    # yes = input()
+                    # if yes == 's':
+                    # meanDF.to_csv(hora+"merged.csv", index=False)
+                # results[alpha][alphaG][gamma][gammaG][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
 
-# bests(results)
+bests(results)
