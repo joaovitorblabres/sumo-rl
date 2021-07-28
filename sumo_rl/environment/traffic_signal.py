@@ -49,9 +49,9 @@ class TrafficSignal:
         self.observation_space = spaces.Box(low=np.zeros(self.num_green_phases + 2*len(self.lanes)), high=np.ones(self.num_green_phases + 2*len(self.lanes)))
         self.discrete_observation_space = spaces.Tuple((
             spaces.Discrete(self.num_green_phases),                       # Green Phase
-            #spaces.Discrete(self.max_green//self.delta_time),            # Elapsed time of phase
+            spaces.Discrete(self.max_green//self.delta_time),            # Elapsed time of phase
             #*(spaces.Discrete(10) for _ in range(2*len(self.lanes))),    # Queue for each lane
-            *(spaces.Discrete(4) for _ in range(1*len(self.lanes)))      # Density and stopped-density for each lane
+            *(spaces.Discrete(10) for _ in range(1*len(self.lanes)))      # Density and stopped-density for each lane
         ))
         self.action_space = spaces.Discrete(self.num_green_phases)
 
@@ -103,6 +103,7 @@ class TrafficSignal:
         queue = self.get_lanes_queue()
         # observation = np.array(phase_id + queue)
         # observation = np.array(phase_id + density + queue)
+        # observation = np.array(phase_id + elapsed + density + queue)
         observation = np.array(phase_id + elapsed + queue)
         # print(phase_id , density , queue)
         return observation

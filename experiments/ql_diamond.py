@@ -76,27 +76,6 @@ def foundAllNeighbours(env):
                             vizinhos[ts_j] = [ts_i]
     return vizinhos
 
-def BFS(graph, s, distances):
-    visited = [False] * (len(graph.keys()))
-    queue = []
-
-    queue.append(s)
-    # print(s, end = " ")
-    visited[list(graph).index(s)] = True
-    initial = list(graph).index(s)
-
-    while queue:
-        s = queue.pop(0)
-        # print(s, end = " ")
-        for i in graph[s]:
-            if visited[list(graph).index(i)] == False:
-                # print(initial)
-                distances[initial][list(graph).index(i)] = distances[initial][list(graph).index(s)] + 1
-                queue.append(i)
-                visited[list(graph).index(i)] = True
-    # print()
-    # print(distances)
-
 if __name__ == '__main__':
 
     prs = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -109,7 +88,7 @@ if __name__ == '__main__':
     prs.add_argument("-g0", dest="g_zero", type=int, default=3, required=False, help="Groups initial amount.\n")
     prs.add_argument("-gt", dest="threshold", type=float, default=0.2, required=False, help="Performance threshold to remove an agent from a group (0, 1].\n")
     prs.add_argument("-e", dest="epsilon", type=float, default=1, required=False, help="Epsilon.\n")
-    prs.add_argument("-eg", dest="groupRecomendation", type=float, default=0.2, required=False, help="Epsilon.\n")
+    prs.add_argument("-eg", dest="groupRecommendation", type=float, default=0.2, required=False, help="Epsilon.\n")
     prs.add_argument("-me", dest="min_epsilon", type=float, default=0.1, required=False, help="Minimum epsilon.\n")
     prs.add_argument("-d", dest="decay", type=float, default=0.95, required=False, help="Epsilon decay.\n")
     prs.add_argument("-mingreen", dest="min_green", type=int, default=10, required=False, help="Minimum green time.\n")
@@ -121,12 +100,12 @@ if __name__ == '__main__':
     prs.add_argument("-s", dest="seconds", type=int, default=6000, required=False, help="Number of simulation seconds.\n")
     prs.add_argument("-t", dest="teleport", type=int, default=200, required=False, help="Time to teleport vehicles.\n")
     prs.add_argument("-v", action="store_true", default=False, help="Print experience tuple.\n")
-    prs.add_argument("-recomendation", action="store_false", default=True, help="Follow group recomendations at a fixed time.\n")
+    prs.add_argument("-recommendation", action="store_false", default=True, help="Follow group recommendations at a fixed time.\n")
     prs.add_argument("-eps", dest="eps", type=int, default=1, help="Number of episodes.\n")
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0].split(' ')
-    out_csv = 'outputs/groups_diamond/alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}_g0{}_gt{}/{}/{}/'.format(args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay, args.g_zero, args.threshold, experiment_time[0], experiment_time[1])
+    out_csv = 'outputs/testgroups_diamond/alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}_g0{}_gt{}/{}/{}/'.format(args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay, args.g_zero, args.threshold, experiment_time[0], experiment_time[1])
     g0 = args.g_zero
     theta = 2
     threshold = args.threshold
@@ -164,7 +143,7 @@ if __name__ == '__main__':
                                  action_space=env.action_spaces(ts),
                                  alpha=args.alpha,
                                  gamma=args.gamma,
-                                 groupRecomendation=args.groupRecomendation,
+                                 groupRecommendation=args.groupRecommendation,
                                  exploration_strategy=EpsilonGreedy(initial_epsilon=args.epsilon, min_epsilon=args.min_epsilon, decay=args.decay)) for ts in env.ts_ids}
 
         groups = groupingAgents(env.ts_ids, g0, theta, env, threshold)
@@ -173,7 +152,7 @@ if __name__ == '__main__':
                 groups[env.traffic_signals[ts].groupID].setNextStates.append(env.encode(initial_states[ts], ts))
             # print(groups); exit()
         for g in groups.keys():
-            groups[g].addState(groups[g].setNextStates)
+            # groups[g].addState(groups[g].setNextStates)
             groups[g].state = copy.copy(groups[g].setNextStates)
             groups[g].setNextStates = []
 
@@ -183,23 +162,24 @@ if __name__ == '__main__':
 
         twt = []
 
-        groupRecomendation = 0
+        groupRecommendation = 0
         for ep in range(1, args.eps+1):
-            if args.recomendation:
-                groupRecomendation = args.groupRecomendation
+            if args.recommendation:
+                groupRecommendation = args.groupRecommendation
             else:
-                if ep % 30 == 0:
-                    groupRecomendation = 0
-                elif ep % 30 == 10:
-                    groupRecomendation = 0.5
-                elif ep % 30 == 20:
-                    groupRecomendation = 1
+                if ep > 100:
+                    if ep % 30 == 0:
+                        groupRecommendation = 0
+                    elif ep % 30 == 10:
+                        groupRecommendation = 0.5
+                    elif ep % 30 == 20:
+                        groupRecommendation = 1
 
             print("RUN =", run, "EP =", ep)
 
             for ts in ql_agents.keys():
                 ql_agents[ts].state = env.encode(initial_states[ts], ts)
-                ql_agents[ts].groupRecomendation = groupRecomendation
+                ql_agents[ts].groupRecommendation = groupRecommendation
 
             done = {'__all__': False}
             density = {'step_time': []}
@@ -208,7 +188,7 @@ if __name__ == '__main__':
             for ts in ql_agents.keys():
                 density[ts+"s_a_ns_r"] = []
             density['groups'] = []
-            density['recomendations'] = []
+            density['recommendations'] = []
 
             total_queued = {ts: [] for ts in ql_agents.keys()}
             lanes_density = {ts: [] for ts in ql_agents.keys()}
@@ -266,7 +246,7 @@ if __name__ == '__main__':
                                     env.traffic_signals[agent_id].groupID = g
                                     env.traffic_signals[agent_id].inGroup = True
                                     ql_agents[agent_id].groupActing = False
-                                    ql_agents[agent_id].groupRecomendation = groupRecomendation
+                                    ql_agents[agent_id].groupRecommendation = groupRecommendation
                                 # print(groups[g], backupGroups)
                             else:
                                 for agent_id in groups[g].setTLs:
@@ -275,7 +255,7 @@ if __name__ == '__main__':
                                     groups[g].setNextStates.append(next[agent_id])
                                     groups[g].setRewards[-1].append(r[agent_id])
 
-                                groups[g].addState(groups[g].setNextStates)
+                                # groups[g].addState(groups[g].setNextStates)
                                 groups[g].state = copy.copy(groups[g].setNextStates)
                                 groups[g].setNextStates = []
                             groups[g].createdAt = env.sim_step
@@ -315,6 +295,11 @@ if __name__ == '__main__':
 
                     states = {ts: [] for ts in ql_agents.keys()}
                     for ts in env.traffic_signals:
+                        if ql_agents[ts].action == env.traffic_signals[ts].phase//2 and env.traffic_signals[ts].time_since_last_phase_change >= env.traffic_signals[ts].max_green:
+                            phases = [i for i in range(0,ql_agents[ts].action_space.n)]
+                            phases.remove(ql_agents[ts].action)
+                            ql_agents[ts].action = np.random.choice(phases)
+                            actions[ts] = ql_agents[ts].action
                         states[ts] = ql_agents[ts].state
 
 
@@ -325,7 +310,7 @@ if __name__ == '__main__':
                         density[ts+"s_a_ns_r"].append([states[ts], actions[ts], next_state, r[ts]])
 
                     density['groups'].append(str(groups))
-                    density['recomendations'].append(groupRecomendation)
+                    density['recommendations'].append(groupRecommendation)
                     # print(density['groups'][-1], groups)
 
                     next = {}
@@ -343,7 +328,7 @@ if __name__ == '__main__':
                     # ORGANIZAR MELHOR
                     for g in list(groups):
                         if groups[g].setTLs:
-                            groups[g].addState(groups[g].setNextStates)
+                            # groups[g].addState(groups[g].setNextStates)
                             groups[g].addAction(groups[g].action)
                             # print(groups[g].action, groups[g], groups[g].setTLs)
                             groups[g].learn()
@@ -363,7 +348,7 @@ if __name__ == '__main__':
                                     env.traffic_signals[agent_id].groupID = None
                                     env.traffic_signals[agent_id].inGroup = False
                                     ql_agents[agent_id].groupActing = False
-                                    ql_agents[agent_id].groupRecomendation = groupRecomendation
+                                    ql_agents[agent_id].groupRecommendation = groupRecommendation
 
                                 for TL in groups[g].setTLs:
                                     if TL not in removed:
@@ -384,7 +369,7 @@ if __name__ == '__main__':
                                             env.traffic_signals[TL].inGroup = True
                                             groups[newGroupID].action.append(actions[TL])
                                             ql_agents[agent_id].groupActing = False
-                                            ql_agents[agent_id].groupRecomendation = groupRecomendation
+                                            ql_agents[agent_id].groupRecommendation = groupRecommendation
                                     else:
                                         groups[newGroupID] = Groups(newGroupID, env, threshold, args.alpha_group, args.gamma_group)
                                         groups[newGroupID].action = []
@@ -399,8 +384,8 @@ if __name__ == '__main__':
 
                                         # print(groups[newGroupID].setNextStates, groups[newGroupID].action, groups[newGroupID].state)
                                         # x = input()
-                                        groups[newGroupID].addState(groups[newGroupID].state)
-                                        groups[newGroupID].addState(groups[newGroupID].setNextStates)
+                                        # groups[newGroupID].addState(groups[newGroupID].state)
+                                        # groups[newGroupID].addState(groups[newGroupID].setNextStates)
                                         groups[newGroupID].addAction(groups[newGroupID].action)
                                         # groups[newGroupID].learn()
                                         groups[newGroupID].action = []

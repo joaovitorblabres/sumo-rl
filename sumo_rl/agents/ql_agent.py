@@ -6,7 +6,7 @@ from sumo_rl.exploration.epsilon_greedy import EpsilonGreedy
 
 class QLAgent:
 
-    def __init__(self, starting_state, state_space, action_space, alpha=0.1, gamma=0.95, exploration_strategy=EpsilonGreedy(), groupRecomendation=0.2):
+    def __init__(self, starting_state, state_space, action_space, alpha=0.1, gamma=0.95, exploration_strategy=EpsilonGreedy(), groupRecommendation=0.2):
         self.state = starting_state
         self.state_space = state_space
         self.action_space = action_space
@@ -15,7 +15,7 @@ class QLAgent:
         self.gamma = gamma
         self.groupAction = None
         self.groupActing = False
-        self.groupRecomendation = groupRecomendation
+        self.groupRecommendation = groupRecommendation
         self.decayGroup = 1
         self.minEpsilonGroup = 0.05
         self.q_table = {self.state: [0 for _ in range(action_space.n)]}
@@ -24,14 +24,14 @@ class QLAgent:
 
     def act(self):
         if self.groupActing:
-            # print(self.groupAction, self.state, self.action_space, self.groupRecomendation)
-            if np.random.rand() < self.groupRecomendation:
+            # print(self.groupAction, self.state, self.action_space, self.groupRecommendation)
+            if np.random.rand() < self.groupRecommendation:
                 self.action = self.groupAction
                 # print("GROUP", self.action, self.groupAction)
             else:
                 self.action = self.exploration.choose(self.q_table, self.state, self.action_space)
                 # print("GREEDY", self.action)
-            self.groupRecomendation = max(self.groupRecomendation*self.decayGroup, self.minEpsilonGroup)
+            self.groupRecommendation = max(self.groupRecommendation*self.decayGroup, self.minEpsilonGroup)
         else:
             self.action = self.exploration.choose(self.q_table, self.state, self.action_space)
         return self.action

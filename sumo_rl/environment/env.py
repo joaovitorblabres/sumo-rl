@@ -210,25 +210,25 @@ class SumoEnvironment(MultiAgentEnv):
 
     # Below functions are for discrete state space
 
-    # def encode(self, state, ts_id):
-    #     phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
-    #     elapsed = self._discretize_elapsed_time(self.traffic_signals[ts_id].time_since_last_phase_change)
-    #     density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
-    #     # tuples are hashable and can be used as key in python dictionary
-    #     # print(tuple([phase] + [elapsed] + density_queue))
-    #     return tuple([phase] + [elapsed] + density_queue)
-        # return tuple([phase] + density_queue)
-
     def encode(self, state, ts_id):
         phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
         elapsed = self._discretize_elapsed_time(self.traffic_signals[ts_id].time_since_last_phase_change)
         density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
-        # return self.radix_encode([phase] + density_queue, ts_id)
-        return self.radix_encode([phase] + [elapsed] + density_queue, ts_id)
+        # tuples are hashable and can be used as key in python dictionary
+        # print(tuple([phase] + [elapsed] + density_queue))
+        return tuple([phase] + [elapsed] + density_queue)
+        # return tuple([phase] + density_queue)
+
+    # def encode(self, state, ts_id):
+    #     phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
+    #     elapsed = self._discretize_elapsed_time(self.traffic_signals[ts_id].time_since_last_phase_change)
+    #     density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
+    #     # return self.radix_encode([phase] + density_queue, ts_id)
+    #     return self.radix_encode([phase] + [elapsed] + density_queue, ts_id)
 
     def _discretize_density(self, density):
         # print(density*100)
-        return min(int(density*4), 3)
+        return min(int(density*10), 9)
 
     def _discretize_elapsed_time(self, elapsed):
         # print(elapsed, self.delta_time, min(1, elapsed / self.delta_time))

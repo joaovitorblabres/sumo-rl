@@ -1,6 +1,8 @@
 import argparse
 import os
 import sys
+import numpy as np
+import copy
 import pandas as pd
 from datetime import datetime
 
@@ -43,7 +45,7 @@ if __name__ == '__main__':
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0].split(' ')
-    out_csv = 'outputs/IndividualLearningDiamondWT/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
+    out_csv = 'outputs/testsIndividualLearningDiamondWT/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
 
     env = SumoEnvironment(net_file='nets/diamond/DiamondTLs.net.xml',
                           route_file=args.route,
@@ -104,7 +106,13 @@ if __name__ == '__main__':
                         waiting_time_per_lane[ts].append( { lane: data for lane, data in zip(env.traffic_signals[ts].lanes, env.traffic_signals[ts].get_waiting_time_per_lane()) } )
 
                     states = {ts: [] for ts in ql_agents.keys()}
+
                     for ts in ql_agents.keys():
+                        if ql_agents[ts].action == env.traffic_signals[ts].phase//2 and env.traffic_signals[ts].time_since_last_phase_change >= env.traffic_signals[ts].max_green:
+                            phases = [i for i in range(0,ql_agents[ts].action_space.n)]
+                            phases.remove(ql_agents[ts].action)
+                            ql_agents[ts].action = np.random.choice(phases)
+                            actions[ts] = ql_agents[ts].action
                         states[ts] = ql_agents[ts].state
 
                     s, r, done, _ = env.step(action=actions)
