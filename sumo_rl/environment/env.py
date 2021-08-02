@@ -11,6 +11,7 @@ import sumolib
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
 import pandas as pd
+import gc
 
 from .traffic_signal import TrafficSignal
 
@@ -70,6 +71,7 @@ class SumoEnvironment(MultiAgentEnv):
         traci.close()
 
     def reset(self):
+        # gc.collect()
         try:
             traci.close()
         except Exception as e:
@@ -228,7 +230,7 @@ class SumoEnvironment(MultiAgentEnv):
 
     def _discretize_density(self, density):
         # print(density*100)
-        return min(int(density*10), 9)
+        return min(int(density*4), 3)
 
     def _discretize_elapsed_time(self, elapsed):
         # print(elapsed, self.delta_time, min(1, elapsed / self.delta_time))

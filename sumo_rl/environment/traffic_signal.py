@@ -8,6 +8,7 @@ else:
 import traci
 import traci.constants as tc
 import numpy as np
+import gc
 from gym import spaces
 
 
@@ -51,7 +52,7 @@ class TrafficSignal:
             spaces.Discrete(self.num_green_phases),                       # Green Phase
             spaces.Discrete(self.max_green//self.delta_time),            # Elapsed time of phase
             #*(spaces.Discrete(10) for _ in range(2*len(self.lanes))),    # Queue for each lane
-            *(spaces.Discrete(10) for _ in range(1*len(self.lanes)))      # Density and stopped-density for each lane
+            *(spaces.Discrete(4) for _ in range(1*len(self.lanes)))      # Density and stopped-density for each lane
         ))
         self.action_space = spaces.Discrete(self.num_green_phases)
 
@@ -60,6 +61,7 @@ class TrafficSignal:
         logic.type = 0
         logic.phases = self.phases
         traci.trafficlight.setProgramLogic(self.id, logic)
+        # gc.collect()
 
     @property
     def phase(self):
