@@ -21,14 +21,17 @@ class QLAgent:
         self.q_table = {self.state: [0 for _ in range(action_space.n)]}
         self.exploration = exploration_strategy
         self.acc_reward = 0
+        self.followed = False
 
     def act(self):
         if self.groupActing:
             # print(self.groupAction, self.state, self.action_space, self.groupRecommendation)
-            if np.random.rand() < self.groupRecommendation:
+            if self.followGroup:
+                self.followed = True
                 self.action = self.groupAction
                 # print("GROUP", self.action, self.groupAction)
             else:
+                self.followed = False
                 self.action = self.exploration.choose(self.q_table, self.state, self.action_space)
                 # print("GREEDY", self.action)
             self.groupRecommendation = max(self.groupRecommendation*self.decayGroup, self.minEpsilonGroup)

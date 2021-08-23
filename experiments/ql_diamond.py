@@ -20,7 +20,7 @@ from sumo_rl import SumoEnvironment
 from sumo_rl.agents import QLAgent
 from sumo_rl.exploration import EpsilonGreedy
 
-# np.random.seed(4937)
+np.random.seed(4937)
 
 def csv_make_dir(type, data, out_csv):
     type_csv = f'{out_csv}_DATA_{run}_{ep}/{type}.csv'
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0].split(' ')
-    out_csv = 'outputs/testgroups_diamond/alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}_g0{}_gt{}_gr{}/{}/{}/'.format(args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay, args.g_zero, args.threshold, args.groupRecommendation, experiment_time[0], experiment_time[1])
+    out_csv = 'outputs/ALLgroupsDiamond/alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}_g0{}_gt{}_gr{}/{}/{}/'.format(args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay, args.g_zero, args.threshold, args.groupRecommendation, experiment_time[0], experiment_time[1])
     g0 = args.g_zero
     theta = 2
     threshold = args.threshold
@@ -180,9 +180,9 @@ if __name__ == '__main__':
                     if ep % 300 == 0:
                         groupRecommendation = 0
                     elif ep % 300 == 100:
-                        groupRecommendation = 0.5
+                        groupRecommendation = 0.25
                     elif ep % 300 == 200:
-                        groupRecommendation = 1
+                        groupRecommendation = 0.5
 
             print("RUN =", run, "EP =", ep)
 
@@ -277,10 +277,13 @@ if __name__ == '__main__':
                         if env.sim_step > lastSecond*0.1 + groups[g].createdAt and groupRecommendation > 0: # espera um tempo para começar a agir os agentes dos grupos
                             # print("tá entrando")
                             actionsGroups[g] = groups[g].act().replace('[', '').replace(']', '').split(',')
+                            followGroup = np.random.rand() < args.groupRecommendation
+
                             for agent_id in range(0, len(groups[g].setTLs)):
                                 if actionsGroups[g][agent_id] == '':
                                     actionsGroups[g][agent_id] = 0
                                 ql_agents[groups[g].setTLs[agent_id]].groupActing = True
+                                ql_agents[groups[g].setTLs[agent_id]].followGroup = followGroup
                                 ql_agents[groups[g].setTLs[agent_id]].groupAction = int(actionsGroups[g][agent_id])
                                 # print(groups[g], actionsGroups[g][agent_id], ql_agents[groups[g].setTLs[agent_id]].groupAction, groups[g].setTLs[agent_id], env.ts_ids[agent_id])
 
@@ -319,7 +322,7 @@ if __name__ == '__main__':
 
                     for ts in env.traffic_signals:
                         next_state=env.encode(s[ts], ts)
-                        density[ts+"s_a_ns_r"].append([states[ts], actions[ts], next_state, r[ts]])
+                        density[ts+"s_a_ns_r"].append([states[ts], actions[ts], next_state, r[ts], ql_agents[ts].followed])
 
                     density['groups'].append(str(groups))
                     density['recommendations'].append(groupRecommendation)
@@ -445,7 +448,7 @@ if __name__ == '__main__':
             os.makedirs(os.path.dirname(density_csv), exist_ok=True)
             den = pd.DataFrame(density)
             den.to_csv(density_csv, index=False)
-            lastSecond = env.sim_step
+            lastSecond = args.seconds
             del density
             del den
             del df

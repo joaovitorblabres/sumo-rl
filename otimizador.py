@@ -35,8 +35,8 @@ def bests(results):
 # alpha 0.11 - gamma: 0.86 - epsilon: 0.05
 # alpha 0.13 - gamma: 0.95 - epsilon: 0.05
 # alpha 0.15 - gamma: 0.95 - epsilon: 0.05
-runs = 30
-eps = 100
+runs = 1
+eps = 300
 # ['0.2-0-0.9-0-0.05', '0.3-0-0.8-0-0.05', '0.2-0-0.8-0-0.05', '0.1-0-0.95-0-0.05', '0.1-0-0.85-0-0.05', '0.1-0-0.9-0-0.05', '0.15-0-0.8-0-0.05', '0.15-0-0.9-0-0.05', '0.5-0-0.85-0-0.05', '0.1-0-0.8-0-0.05']
 params = {}
 # params[0] = {'alpha': 0.2, 'gamma': 0.9, 'epsilon': 0.05, 'decay': 1}
@@ -58,6 +58,7 @@ alphasGroups = [0.10, 0.15, 0.20, 0.3, 0.4, 0.5]
 gammas = [0.80, 0.90]
 # gammasGroups = [0]
 gammasGroups = [0.80, 0.85, 0.90, 0.95, 0.99]
+recs = [0.2]
 resultados = {}
 for alpha in alphas:
     resultados[alpha] = {}
@@ -68,12 +69,14 @@ for alpha in alphas:
             for gammaG in gammasGroups:
                 resultados[alpha][alphaG][gamma][gammaG] = {}
                 for decay in decays:
-                    # process = subprocess.Popen(["python3", "experiments/ql_diamond_withoutgroups.py", "-s", "20000", "-a", str(alpha), "-g", str(gamma), "-e", str(decay), "-d", str(1), "-runs", str(runs), "-eps", str(eps)], stdout=subprocess.PIPE)
-                    process = subprocess.Popen(["python3", "experiments/ql_diamond.py", "-s", "20000", "-a", str(alpha), "-g", str(gamma), "-ag", str(alphaG), "-gg", str(gammaG), "-e", str(decay), "-d", str(1), "-runs", str(runs), "-eps", str(eps)], stdout=subprocess.PIPE)
-                    stdout = process.communicate()[0]
-                    values = str(stdout).split('\\n')[-2].replace("[", "").replace("]", "").replace(" ", "").replace('\'', '').split(",")
-                    values = list(map(float, values))
-                    resultados[alpha][alphaG][gamma][gammaG][decay] = {'values': values, 'sum': sum(values), 'mean': statistics.mean(values), 'std': statistics.pstdev(values)}
+                    resultados[alpha][alphaG][gamma][gammaG][decay] = {}
+                    for rec in recs:
+                        # process = subprocess.Popen(["python3", "experiments/ql_diamond_withoutgroups.py", "-s", "20000", "-a", str(alpha), "-g", str(gamma), "-e", str(decay), "-d", str(1), "-runs", str(runs), "-eps", str(eps)], stdout=subprocess.PIPE)
+                        process = subprocess.Popen(["python3", "experiments/ql_diamond.py", "-s", "20000", "-a", str(alpha), "-g", str(gamma), "-ag", str(alphaG), "-gg", str(gammaG), "-e", str(decay), "-eg", str(rec), "-d", str(1), "-runs", str(runs), "-eps", str(eps)], stdout=subprocess.PIPE)
+                        stdout = process.communicate()[0]
+                        values = str(stdout).split('\\n')[-2].replace("[", "").replace("]", "").replace(" ", "").replace('\'', '').split(",")
+                        values = list(map(float, values))
+                        resultados[alpha][alphaG][gamma][gammaG][decay][rec] = {'values': values, 'sum': sum(values), 'mean': statistics.mean(values), 'std': statistics.pstdev(values)}
 # resultados = {}
 # for param in params:
 #     alpha = params[param]['alpha']

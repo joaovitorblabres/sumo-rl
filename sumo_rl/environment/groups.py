@@ -91,15 +91,17 @@ class Groups:
         self.setNextStates = []
 
         rewardNormalized = 0
-        totalVehicles = 1
+        totalVehicles = 0
         if self.setRewards:
             for i, tl in enumerate(self.setTLs):
                 if i < len(self.setRewards[-1]):
                     vehicles = self.env.traffic_signals[tl].get_total_vehicles()
                     rewardNormalized += self.setRewards[-1][i]*vehicles
                     totalVehicles += vehicles
-            # print(self, self.setRewards[-1], sum(rewardNormalized)/totalVehicles, totalVehicles, rewardNormalized)
-        self.rewards.append(rewardNormalized/totalVehicles)
+        #     # print(self, self.setRewards[-1], sum(rewardNormalized)/totalVehicles, totalVehicles, rewardNormalized)
+        self.rewards.append(rewardNormalized/max(1,totalVehicles))
+        # rew = -1*np.linalg.norm(np.array(self.setRewards[-1]))
+        # print(self.rewards[-1], self.setRewards[-1])
         try:
             self.qTable[s][a] = self.qTable[s][a] + self.alpha*(self.rewards[-1] + self.gamma*max(self.qTable[s1]) - self.qTable[s][a])
         except Exception as e:
@@ -120,6 +122,10 @@ class Groups:
             self.setRewards = self.setRewards[-lastNPorcentage:]
             # print(mean(rewardPerformance))
             self.performance = self.rewardPerformance
+            if self.performance > 0:
+                self.performance = self.performance*self.threshold
+            else:
+                self.performance = self.performance*self.threshold + self.performance
 
     def addGroup(self, TL):
         if self.env.traffic_signals[TL].inGroup == False:
@@ -169,14 +175,9 @@ class Groups:
                 tlPerformance += r[tl]
                 lenRew += 1
             tlPerformance /= lenRew
-            gpPerformance = 0
-            if self.performance > 0:
-                gpPerformance = self.performance*self.threshold
-            else:
-                gpPerformance = self.performance*self.threshold + self.performance
-
+            # print(self.rewards, tlPerformance)
             if self.threshold != 0:
-                if tlPerformance < gpPerformance:
+                if tlPerformance < self.performance:
                     removed.append(self.setTLs[tl])
                     self.timeCreated = 0
                 # print("MUITO RUIM!!!", self.setTLs[tl])
@@ -193,4 +194,4 @@ class Groups:
         return str(self)
 
     def __str__(self):
-        return "{Group ID: "+ str(self.id) + ", Agents: " + str(self.setTLs) + ", Neighbours: " + str(self.neighbours) + ", Action: " + str(self.action) + ", Agents Removed: "+ str(self.removed) + ", Regrouped? " + ("YES" if self.timeCreated == 0 else "NO") + "}"
+        return "{Group ID: "+ str(self.id) + ", Agents: " + str(self.setTLs) + ", Neighbours: " + str(self.neighbours) + ", Action: " + str(self.action) + ", Agents Removed: "+ str(self.removed) + ", Regrouped? " + ("YES" if self.timeCreated == 0 else "NO") + ", Reward: " + (str(self.rewards[-1]) if len(self.rewards) else str([0.0])) + "}"
