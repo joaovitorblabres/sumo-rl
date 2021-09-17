@@ -127,7 +127,7 @@ class TrafficSignal:
         return reward
 
     def _queue_reward(self):
-        return - (sum(self.get_lanes_queue()))*10
+        return - (sum(self.get_lanes_queue()))#*10
 
     def _waiting_time_reward(self):
         ts_wait = sum(self.get_waiting_time_per_lane()) / 100.0

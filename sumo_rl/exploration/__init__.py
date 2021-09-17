@@ -1,1 +1,3 @@
 from sumo_rl.exploration.epsilon_greedy import EpsilonGreedy
+from sumo_rl.exploration.epsilon_greedy import EpsilonGreedyGroups
+from sumo_rl.exploration.epsilon_greedy import MOSelection

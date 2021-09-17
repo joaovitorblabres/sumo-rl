@@ -165,7 +165,7 @@ class SumoEnvironment(MultiAgentEnv):
         # return {ts: self.traffic_signals[ts].compute_observation() for ts in self.ts_ids}
 
     def _compute_rewards(self):
-        return {ts: self.traffic_signals[ts].compute_reward() for ts in self.ts_ids if self.traffic_signals[ts].time_to_act}
+        return {ts: [self.traffic_signals[ts].compute_reward(), 0] for ts in self.ts_ids if self.traffic_signals[ts].time_to_act}
         # return {ts: self.traffic_signals[ts].compute_reward() for ts in self.ts_ids}
 
     @property
@@ -177,7 +177,7 @@ class SumoEnvironment(MultiAgentEnv):
         return self.traffic_signals[self.ts_ids[0]].action_space
 
     def observation_spaces(self, ts_id):
-        return self.traffic_signals[ts_id].observation_space
+        return self.traffic_signals[ts_id].discrete_observation_space
 
     def action_spaces(self, ts_id):
         return self.traffic_signals[ts_id].action_space
@@ -212,21 +212,21 @@ class SumoEnvironment(MultiAgentEnv):
 
     # Below functions are for discrete state space
 
+    # def encode(self, state, ts_id):
+        # phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
+        # elapsed = self._discretize_elapsed_time(self.traffic_signals[ts_id].time_since_last_phase_change)
+        # density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
+        # tuples are hashable and can be used as key in python dictionary
+        # print(tuple([phase] + [elapsed] + density_queue))
+        # return tuple([phase] + [elapsed] + density_queue)
+        # return tuple([phase] + density_queue)
+
     def encode(self, state, ts_id):
         phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
         elapsed = self._discretize_elapsed_time(self.traffic_signals[ts_id].time_since_last_phase_change)
         density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
-        # tuples are hashable and can be used as key in python dictionary
-        # print(tuple([phase] + [elapsed] + density_queue))
-        return tuple([phase] + [elapsed] + density_queue)
-        # return tuple([phase] + density_queue)
-
-    # def encode(self, state, ts_id):
-    #     phase = int(np.where(state[:self.traffic_signals[ts_id].num_green_phases] == 1)[0])
-    #     elapsed = self._discretize_elapsed_time(self.traffic_signals[ts_id].time_since_last_phase_change)
-    #     density_queue = [self._discretize_density(d) for d in state[self.traffic_signals[ts_id].num_green_phases:]]
-    #     # return self.radix_encode([phase] + density_queue, ts_id)
-    #     return self.radix_encode([phase] + [elapsed] + density_queue, ts_id)
+        # return self.radix_encode([phase] + density_queue, ts_id)
+        return self.radix_encode([phase] + [elapsed] + density_queue, ts_id)
 
     def _discretize_density(self, density):
         # print(density*100)
