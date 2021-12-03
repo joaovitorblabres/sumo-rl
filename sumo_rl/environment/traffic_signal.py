@@ -9,6 +9,7 @@ import traci
 import traci.constants as tc
 import numpy as np
 import gc
+import itertools
 from gym import spaces
 
 
@@ -30,7 +31,9 @@ class TrafficSignal:
         self.time_since_last_phase_change = 0
         self.next_action_time = 0
         self.last_measure = 0.0
-        self.last_reward = None
+        self.last_cars = 0.0
+        self.out_cars = 0.0
+        self.last_reward = [0,0]
         self.inGroup = False
         self.groupID = None
         self.dic_vehicles = {}
@@ -39,6 +42,10 @@ class TrafficSignal:
         self.lanes = list(dict.fromkeys(traci.trafficlight.getControlledLanes(self.id)))  # Remove duplicates and keep order
         self.out_lanes = [link[0][1] for link in traci.trafficlight.getControlledLinks(self.id) if link]
         self.out_lanes = list(set(self.out_lanes))
+        self.flow = 0
+        self.vehLanes = {}
+        for lane in self.lanes:
+            self.vehLanes[lane] = {}
 
         """
         Default observation space is a vector R^(#greenPhases + 2 * #lanes)
@@ -47,7 +54,7 @@ class TrafficSignal:
 
         Action space is which green phase is going to be open for the next delta_time seconds
         """
-        self.observation_space = spaces.Box(low=np.zeros(self.num_green_phases + 2*len(self.lanes)), high=np.ones(self.num_green_phases + 2*len(self.lanes)))
+        self.observation_space = spaces.Box(low=np.zeros(self.num_green_phases + 1 + 1*len(self.lanes)), high=np.ones(self.num_green_phases + 1 + 1*len(self.lanes)))
         self.discrete_observation_space = spaces.Tuple((
             spaces.Discrete(self.num_green_phases),                       # Green Phase
             spaces.Discrete(self.max_green//self.delta_time),            # Elapsed time of phase
@@ -114,11 +121,21 @@ class TrafficSignal:
         # self.last_reward = self._waiting_time_reward()
         # self.dic_vehicles = self.update_vehicles_state(self.dic_vehicles)
         # self.last_reward = self.get_rewards_from_sumo(self.dic_vehicles, self.phase)[0]
-        self.last_reward = self._queue_reward()
+        # self.last_reward = [self._queue_reward(), self.get_rewards_from_sumo(self.dic_vehicles, self.phase)[0]]
+        # self.last_reward = [self._queue_reward(), self._pressure_reward()]
+        self.last_reward = [self._queue_reward(), self.get_flow()]
+        # self.last_reward = [self._queue_reward(), self._pressure_reward()]
+        # self.last_reward = [self.get_flow(), self._queue_reward()]
+        # print(self.last_reward)
+        # self.get_flow()
+        # self.last_reward = [self._queue_reward(), 0]
         return self.last_reward
 
     def _pressure_reward(self):
-        return -self.get_pressure()
+        return self.get_pressure()
+
+    def _out_lanes_reward(self):
+        return self.get_out_lanes_density()
 
     def _queue_average_reward(self):
         new_average = np.mean(self.get_stopped_vehicles_num())
@@ -145,7 +162,7 @@ class TrafficSignal:
         return reward
 
     def _waiting_time_reward3(self):
-        ts_wait = sum(self.get_waiting_time())
+        ts_wait = sum(self.get_waiting_time_per_lane())
         reward = -ts_wait
         self.last_measure = ts_wait
         return reward
@@ -166,12 +183,36 @@ class TrafficSignal:
             wait_time_per_lane.append(wait_time)
         return wait_time_per_lane
 
+    def get_flow(self):
+        flow = 0
+        keys = list(itertools.chain.from_iterable([list(self.vehLanes[lane].keys()) for lane in self.lanes]))
+        for lane in self.lanes:
+            vehicles = traci.lane.getLastStepVehicleIDs(lane)
+            self.vehLanes[lane] = {}
+            for veh in vehicles:
+                if veh not in self.vehLanes[lane]:
+                    self.vehLanes[lane][veh] = 1
+
+# print(list(itertools.chain.from_iterable(a)))
+        # print('now', list(itertools.chain.from_iterable([list(self.vehLanes[lane].keys()) for lane in self.lanes])), 'last', keys)
+        # print(list(set(keys) - set(list(itertools.chain.from_iterable([list(self.vehLanes[lane].keys()) for lane in self.lanes])))))
+        # print(len(list(set(keys) - set(list(itertools.chain.from_iterable([list(self.vehLanes[lane].keys()) for lane in self.lanes]))))))
+
+        # new_cars = sum(traci.lane.getLastStepVehicleNumber(lane) for lane in self.lanes)
+        # out_cars = sum(traci.lane.getLastStepVehicleNumber(lane) for lane in self.out_lanes)
+        # reward = (out_cars - self.out_cars) - (new_cars - self.last_cars)
+        self.last_cars = len(list(itertools.chain.from_iterable([list(self.vehLanes[lane].keys()) for lane in self.lanes])))
+        # self.out_cars = out_cars
+        self.flow = len(list(set(keys) - set(list(itertools.chain.from_iterable([list(self.vehLanes[lane].keys()) for lane in self.lanes])))))
+        # print(self.flow)
+        return self.flow
+
     def get_pressure(self):
         return abs(sum(traci.lane.getLastStepVehicleNumber(lane) for lane in self.lanes) - sum(traci.lane.getLastStepVehicleNumber(lane) for lane in self.out_lanes))
 
     def get_out_lanes_density(self):
         vehicle_size_min_gap = 7.5  # 5(vehSize) + 2.5(minGap)
-        return [min(1, traci.lane.getLastStepVehicleNumber(lane) / (traci.lane.getLength(lane) / vehicle_size_min_gap)) for lane in self.out_lanes]
+        return sum([min(1, traci.lane.getLastStepVehicleNumber(lane) / (traci.lane.getLength(lane) / vehicle_size_min_gap)) for lane in self.out_lanes])
 
     def get_lanes_density(self):
         vehicle_size_min_gap = 7.5  # 5(vehSize) + 2.5(minGap)

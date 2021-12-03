@@ -1,6 +1,7 @@
 import numpy as np
 from gym import spaces
 import random
+import copy
 
 class EpsilonGreedy:
 
@@ -55,14 +56,64 @@ def compute_hypervolume(q_set, nA, ref):
         # pygmo uses hv minimization,
         # negate rewards to get costs
         # print(q_set, i)
-        points = np.array(q_set[i]) * -1.
+        points = np.asarray(q_set[i]) * -1.
         hv = hypervolume(points)
         # use negative ref-point for minimization
         q_values[i] = hv.compute(ref*-1)
     return q_values
 
+def paretoEfficient(points, return_mask = True, repeated = False, minimize = True):
+    """
+    Find the (minimizing) pareto-efficient points
+    :param points: An (n_points, n_points) array
+    :param return_mask: True to return a mask
+    :return: An array of indices of pareto-efficient points.
+        If return_mask is True, this will be an (n_points, ) boolean array
+        Otherwise it will be a (n_efficient_points, ) integer array of indices.
+    """
+    is_efficient = np.arange(points.shape[0])
+    n_points = points.shape[0]
+    next_point_index = 0  # Next index in the is_efficient array to search for
+    while next_point_index < len(points):
+        if minimize:
+            nondominated_point_mask = np.any(points < points[next_point_index], axis=1)
+        else:
+            nondominated_point_mask = np.any(points > points[next_point_index], axis=1)
+        if repeated:
+            for i in range(points.shape[0]):
+                if np.array_equal(points[next_point_index], points[i]):
+                    nondominated_point_mask[i] = True
+        else:
+            nondominated_point_mask[next_point_index] = True
+        is_efficient = is_efficient[nondominated_point_mask]  # Remove dominated points
+        points = points[nondominated_point_mask]
+        next_point_index = np.sum(nondominated_point_mask[:next_point_index])+1
+    if return_mask:
+        is_efficient_mask = np.zeros(n_points, dtype = bool)
+        is_efficient_mask[is_efficient] = True
+        return is_efficient_mask
+
+    else:
+        return is_efficient
+
+def get_non_dominated(solutions):
+    # solutions = copy.deepcopy(solution)
+    is_efficient = np.ones(solutions.shape[0], dtype=bool)
+    # print(solutions)
+    # nonA = []
+    for i, c in enumerate(solutions):
+        if is_efficient[i]:
+            # Remove dominated points, will also remove itself
+            is_efficient[is_efficient] = np.any(c > solutions[is_efficient], axis=1)
+            # keep this solution as non-dominated
+            is_efficient[i] = 1
+            # nonA.append(i)
+
+    return solutions[is_efficient]
+    # return nonA
+
 class MOSelection:
-    def __init__(self, initial_epsilon=0.05, min_epsilon=0.05, decay=1, ref=np.array([-100, -100])):
+    def __init__(self, initial_epsilon=0.05, min_epsilon=0.05, decay=1, ref=np.asarray([-100, -100])):
         self.initial_epsilon = initial_epsilon
         self.epsilon = initial_epsilon
         self.min_epsilon = min_epsilon
@@ -70,13 +121,37 @@ class MOSelection:
         self.ref = ref
 
     def choose(self, q_set, state, action_space):
-        q_values = compute_hypervolume(q_set, action_space.n, self.ref)
+        # qSet = copy.deepcopy(q_set)
+        # q_values = compute_hypervolume(qSet, action_space.n, self.ref)
 
+        solutions = copy.deepcopy(np.concatenate(q_set, axis=0))
+        # print("QSET", qSet)
+        # nonD = [1,0]
+        p = paretoEfficient(solutions, False, False, False)
+        nonD = solutions[p]
+        # print(action_space.n)
+        actions = []
+        for s, q in enumerate(q_set):
+            if len(actions) == action_space.n:
+                break
+            for n in nonD:
+                if len(actions) == action_space.n:
+                    break
+                for v in q:
+                    # print(v, n, q, s, action_space.n, actions)
+                    if np.array_equal(v, n):
+                        if s not in actions:
+                            actions.append(s)
+                            break
+
+        # print(actions)
         if np.random.rand() >= self.epsilon:
             self.epsilon = max(self.epsilon*self.decay, self.min_epsilon)
-            return np.random.choice(np.argwhere(q_values == np.amax(q_values)).flatten())
+            # return np.random.choice(np.argwhere(q_values == np.amax(q_values)).flatten())
+            return np.random.choice(actions)
         else:
             self.epsilon = max(self.epsilon*self.decay, self.min_epsilon)
+            # print(q_set, q_values, nonD)
             return np.random.choice(range(q_set.shape[0]))
 
         #print(self.epsilon)

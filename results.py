@@ -55,16 +55,16 @@ for file in args.f:
     for alphas in glob.glob(file+"/*"):
         main_df = pd.DataFrame()
         params = alphas.split("_")
-        # alpha = params[0].split('/')[-1][5:]
         alpha = params[1].split('/')[-1][5:]
-        # alphaG = 0
-        alphaG = params[3][6:]
-        # gamma = params[1][5:]
+        # alpha = params[1].split('/')[-1][5:]
+        alphaG = 0
+        # alphaG = params[3][6:]
         gamma = params[2][5:]
-        # gammaG = 0
-        gammaG = params[4][6:]
-        # eps = params[2][3:]
-        eps = params[5][3:]
+        # gamma = params[2][5:]
+        gammaG = 0
+        # gammaG = params[4][6:]
+        eps = params[3][3:]
+        # eps = params[5][3:]
         print(alpha, gamma, eps, alphaG, gammaG)
         if alpha not in results.keys():
             results[alpha] = {}
@@ -88,20 +88,21 @@ for file in args.f:
                     else:
                         main_df = pd.concat((main_df, df))
 
-                    all = df.groupby('step_time').sum()['total_wait_time']
+                    # all = df.groupby('step_time').sum()['average_wait_time']
+                    all = df.groupby('step_time').sum()['flow']*-1
                     results[alpha][alphaG][gamma][gammaG][eps]['values'].append(sum(all))
                     results[alpha][alphaG][gamma][gammaG][eps]['avgs'].append(statistics.mean(all))
-                # results[alpha][alphaG][gamma][gammaG][eps]['mean'].append(statistics.mean(results[alpha][alphaG][gamma][gammaG][eps]['values']))
-                # results[alpha][alphaG][gamma][gammaG][eps]['sum'].append(sum(results[alpha][alphaG][gamma][gammaG][eps]['values']))
+                results[alpha][alphaG][gamma][gammaG][eps]['mean'].append(statistics.mean(results[alpha][alphaG][gamma][gammaG][eps]['values']))
+                results[alpha][alphaG][gamma][gammaG][eps]['sum'].append(sum(results[alpha][alphaG][gamma][gammaG][eps]['values']))
                 # if any([val < 10000 for val in results[alpha][alphaG][gamma][gammaG][eps]['avgs']]):
-                meanDF = pd.DataFrame(results[alpha][alphaG][gamma][gammaG][eps]['avgs'][:])
+                # meanDF = pd.DataFrame(results[alpha][alphaG][gamma][gammaG][eps]['avgs'][:])
                 # plt.xlim([-10,910])
                 # plt.plot(range(0,len(results[alpha][alphaG][gamma][gammaG][eps]['avgs'][:])), moving_average(results[alpha][alphaG][gamma][gammaG][eps]['avgs'][:], 1), 'ro-')
                 # for i in range(0, 3):
                     # plt.axvspan((3*i)*100, (1+(3*i))*100-1, facecolor='lightblue', alpha=0.5)
                     # plt.axvspan((1+(3*i))*100, (2+(3*i))*100-1, facecolor='coral', alpha=0.5)
                     # plt.axvspan((2+(3*i))*100, (3+(3*i))*100-1, facecolor='lawngreen', alpha=0.5)
-                # plt.vlines([100-1, 200-1, 300-1, 400-1, 500-1, 600-1, 700-1, 800-1], -1000, max(results[alpha][alphaG][gamma][gammaG][eps]['avgs'])+1000)
+                # plt.vlines([100-1, 200-1, 300-1, 400-1, 500-1, 600-1, 700-1, 800-1], -1000, min(results[alpha][alphaG][gamma][gammaG][eps]['avgs'])+1000)
                 # plt.xlabel("Simulated Days")
                 # plt.ylabel("Average Waited Time")
                 # plt.title(f)
@@ -109,6 +110,6 @@ for file in args.f:
                     # yes = input()
                     # if yes == 's':
                 # meanDF.to_csv(hora+"merged.csv")
-                results[alpha][alphaG][gamma][gammaG][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
+                # results[alpha][alphaG][gamma][gammaG][eps] = {'sum':[],'values': [], 'mean':[], 'avgs': []}
 
-# bests(results)
+bests(results)

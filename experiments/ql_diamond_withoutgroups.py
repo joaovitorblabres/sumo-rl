@@ -45,7 +45,7 @@ if __name__ == '__main__':
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0].split(' ')
-    out_csv = 'outputs/RESULTindividualLearningDiamondWT/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
+    out_csv = 'outputs/WAIT_OPT_5x/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
 
     env = SumoEnvironment(net_file='nets/diamond/DiamondTLs.net.xml',
                           route_file=args.route,
@@ -141,11 +141,11 @@ if __name__ == '__main__':
                 # csv_make_dir( type, data, out_csv  )
 
             df = pd.DataFrame(env.metrics)
-            twt.append(df['total_wait_time'].sum())
+            twt.append(df['flow'].sum())
             density_csv = out_csv+'_{}_{}_densities.csv'.format(run, ep)
             os.makedirs(os.path.dirname(density_csv), exist_ok=True)
             df = pd.DataFrame(density)
-            df.to_csv(density_csv, index=False)
+            # df.to_csv(density_csv, index=False)
 
             if ep != args.eps:
                 initial_states = env.reset()

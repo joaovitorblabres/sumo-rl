@@ -2,7 +2,7 @@ import numpy as np
 from pygmo import hypervolume
 import random
 
-from sumo_rl.exploration.epsilon_greedy import EpsilonGreedy
+from sumo_rl.exploration.epsilon_greedy import MOSelection
 
 def get_non_dominated(solutions):
     is_efficient = np.ones(solutions.shape[0], dtype=bool)
@@ -29,7 +29,7 @@ def compute_hypervolume(q_set, nA, ref):
 
 class mPQLAgent:
 
-    def __init__(self, starting_state, state_space, action_space, ref_point, alpha=0.3, gamma=0.95, exploration_strategy=EpsilonGreedy(), groupRecommendation=0.2, number_obejctives=2):
+    def __init__(self, starting_state, state_space, action_space, ref_point=[-10000, -10000], alpha=0.3, gamma=0.95, exploration_strategy=MOSelection(), groupRecommendation=0.2, number_obejctives=2):
         self.state = starting_state
         self.state_space = 1
         for space in state_space:
@@ -61,8 +61,10 @@ class mPQLAgent:
         for a in range(self.action_space.n):
             nd_sa = self.non_dominated[s][a]
             rew = self.avg_r[s, a]
-            q = nd_sa * rew
-            q_set.append([q[0] + self.alpha*(rew + self.gamma*nd - q[0]) for nd in nd_sa])
+            set = nd_sa * rew
+            # print(set)
+            q = random.choice(set)
+            q_set.append([q + self.alpha*(rew + self.gamma*nd - q) for nd in nd_sa])
         return np.array(q_set)
 
     def update_non_dominated(self, s, a, s_n):

@@ -47,6 +47,6 @@ class QLAgent:
         s1 = next_state
         a = self.action
         # print(s, a, s1, self.action_space.n)
-        self.q_table[s][a] = self.q_table[s][a] + self.alpha*(reward + self.gamma*max(self.q_table[s1]) - self.q_table[s][a])
+        self.q_table[s][a] = self.q_table[s][a] + self.alpha*(reward[0] + self.gamma*max(self.q_table[s1]) - self.q_table[s][a])
         self.state = s1
-        self.acc_reward += reward
+        self.acc_reward += reward[0]

@@ -18,7 +18,8 @@ for file in args.f:
         main_df = pd.DataFrame()
         mean_eps = []
         print(run)
-        for f in sorted(glob.glob(file+'_densities_'+run+'_*'), key=os.path.getmtime):
+        for f in sorted(glob.glob(file+'_'+run+'_*'), key=os.path.getmtime):
+        # for f in sorted(glob.glob(file+'_'+run[-1]+'*'), key=os.path.getmtime):
             df = pd.read_csv(f, sep=',')
             # mean_ep = df.groupby('step_time').mean()['total_wait_time']
             # mean_eps.append(statistics.mean(mean_ep))
@@ -30,9 +31,9 @@ for file in args.f:
         for i in main_df.index:
             main_df.at[i, 'step_time'] = i * 5
 
-        mean_df = pd.DataFrame(mean_eps)
-        for i in mean_df.index:
-            mean_df.at[i, 'day'] = i
+        # mean_df = pd.DataFrame(mean_eps)
+        # for i in mean_df.index:
+        #     mean_df.at[i, 'day'] = i
 
-        # mean_df.to_csv(args.f[0]+run+"_den_mean.csv")
-        main_df.to_csv(args.f[0]+run+"_den_merged.csv", index=False)
+        main_df.to_csv(args.f[0]+run+"_den_mean.csv", index=False)
+        # main_df.to_csv(args.f[0]+run+"_density_merged.csv", index=False)

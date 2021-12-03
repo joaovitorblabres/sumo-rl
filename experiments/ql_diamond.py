@@ -83,9 +83,9 @@ if __name__ == '__main__':
                                   description="""Q-Learning Diamond Network""")
     prs.add_argument("-route", dest="route", type=str, default='nets/diamond/DiamondTLs.rou.xml', help="Route definition xml file.\n")
     prs.add_argument("-a", dest="alpha", type=float, default=0.1, required=False, help="Alpha learning rate.\n")
-    prs.add_argument("-ag", dest="alpha_group", type=float, default=0.1, required=False, help="Group Alpha learning rate.\n")
+    prs.add_argument("-ag", dest="alpha_group", type=float, default=0.3, required=False, help="Group Alpha learning rate.\n")
     prs.add_argument("-g", dest="gamma", type=float, default=0.99, required=False, help="Gamma discount rate.\n")
-    prs.add_argument("-gg", dest="gamma_group", type=float, default=0.99, required=False, help="Group Gamma discount rate.\n")
+    prs.add_argument("-gg", dest="gamma_group", type=float, default=0.8, required=False, help="Group Gamma discount rate.\n")
     prs.add_argument("-g0", dest="g_zero", type=int, default=3, required=False, help="Groups initial amount.\n")
     prs.add_argument("-gt", dest="threshold", type=float, default=0.2, required=False, help="Performance threshold to remove an agent from a group (0, 1].\n")
     prs.add_argument("-e", dest="epsilon", type=float, default=1, required=False, help="Epsilon.\n")
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     prs.add_argument("-fixed", action="store_true", default=False, help="Run with fixed timing traffic signals.\n")
     prs.add_argument("-ns", dest="ns", type=int, default=42, required=False, help="Fixed green time for NS.\n")
     prs.add_argument("-we", dest="we", type=int, default=42, required=False, help="Fixed green time for WE.\n")
-    prs.add_argument("-s", dest="seconds", type=int, default=6000, required=False, help="Number of simulation seconds.\n")
+    prs.add_argument("-s", dest="seconds", type=int, default=20000, required=False, help="Number of simulation seconds.\n")
     prs.add_argument("-t", dest="teleport", type=int, default=200, required=False, help="Time to teleport vehicles.\n")
     prs.add_argument("-v", action="store_true", default=False, help="Print experience tuple.\n")
     prs.add_argument("-debugger", action="store_true", default=False, help="Print experience tuple.\n")
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0].split(' ')
-    out_csv = 'outputs/ALLgroupsDiamond/alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}_g0{}_gt{}_gr{}/{}/{}/'.format(args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay, args.g_zero, args.threshold, args.groupRecommendation, experiment_time[0], experiment_time[1])
+    out_csv = 'outputs/TESTES/alpha{}_gamma{}_alphaG{}_gammaG{}_eps{}_decay{}_g0{}_gt{}_gr{}/{}/{}/'.format(args.alpha, args.gamma, args.alpha_group, args.gamma_group, args.epsilon, args.decay, args.g_zero, args.threshold, args.groupRecommendation, experiment_time[0], experiment_time[1])
     g0 = args.g_zero
     theta = 2
     threshold = args.threshold
@@ -322,7 +322,8 @@ if __name__ == '__main__':
 
                     for ts in env.traffic_signals:
                         next_state=env.encode(s[ts], ts)
-                        density[ts+"s_a_ns_r"].append([states[ts], actions[ts], next_state, r[ts], ql_agents[ts].followed])
+                        # print(env.traffic_signals[ts].get_lanes_queue())
+                        density[ts+"s_a_ns_r"].append([states[ts], actions[ts], next_state, r[ts], ql_agents[ts].followed, env.traffic_signals[ts].get_lanes_queue()])
 
                     density['groups'].append(str(groups))
                     density['recommendations'].append(groupRecommendation)
