@@ -8,10 +8,12 @@ else:
 import traci
 import traci.constants as tc
 import numpy as np
+import pandas as pd
 import gc
+import random
 import itertools
 from gym import spaces
-
+from sklearn.preprocessing import MaxAbsScaler as scaler
 
 class TrafficSignal:
     """
@@ -19,7 +21,7 @@ class TrafficSignal:
     It is responsible for retrieving information and changing the traffic phase using Traci API
     """
 
-    def __init__(self, env, ts_id, delta_time, yellow_time, min_green, max_green):
+    def __init__(self, env, ts_id, delta_time, yellow_time, min_green, max_green, collect):
         self.id = ts_id
         self.env = env
         self.delta_time = delta_time
@@ -43,7 +45,12 @@ class TrafficSignal:
         self.out_lanes = [link[0][1] for link in traci.trafficlight.getControlledLinks(self.id) if link]
         self.out_lanes = list(set(self.out_lanes))
         self.flow = 0
+        self.__normalizer = None
+        self.__collect = collect
+        self.collecting = None
         self.vehLanes = {}
+        self.linearComb = []
+        self.rewards = []
         for lane in self.lanes:
             self.vehLanes[lane] = {}
 
@@ -117,18 +124,61 @@ class TrafficSignal:
         # print(phase_id , density , queue)
         return observation
 
-    def compute_reward(self):
+    @property
+    def normalizer(self) -> scaler:
+        if self.__normalizer is None:
+            # path = "./outputs/BASELINE/alpha0.3_gamma0.8_eps0.05_decay1.0/2021-11-08/09:05:03/"
+            path = "./outputs/FIXED/gamma0.8_eps0.05_decay1.0/2021-12-16/18:44:31/"
+            fit_file = f"{path}fit_data.csv"
+            # print(fit_file)
+            try:
+                fit_data = pd.read_csv(fit_file).to_numpy()
+                self.__normalizer = scaler().fit(fit_data)
+            except FileNotFoundError:
+                err_str = "Fit data must be in scenario directory."
+                err_str += " Please run simulation with flag '--collect' before"
+                raise RuntimeError(err_str) from FileNotFoundError
+        return self.__normalizer
+
+    def collector(self, last_reward):
+        if self.collecting is None:
+            self.collecting = pd.DataFrame({"0": [0.0], "1": [0]})
+
+        df = pd.DataFrame({"0": [last_reward[0]], "1": [last_reward[1]]})
+        self.collecting = pd.concat((self.collecting, df), ignore_index=True)
+        # print(self.collecting)
+
+    def compute_reward(self, normalize = True, testing = False):
         # self.last_reward = self._waiting_time_reward()
         # self.dic_vehicles = self.update_vehicles_state(self.dic_vehicles)
         # self.last_reward = self.get_rewards_from_sumo(self.dic_vehicles, self.phase)[0]
         # self.last_reward = [self._queue_reward(), self.get_rewards_from_sumo(self.dic_vehicles, self.phase)[0]]
         # self.last_reward = [self._queue_reward(), self._pressure_reward()]
-        self.last_reward = [self._queue_reward(), self.get_flow()]
+        if testing:
+            last_reward = [self._queue_reward(), self.get_flow(), -self.get_avg_travel_time(), -self.get_avg_CO2(), -self.get_avg_CO2(), -self.get_avg_CO(), -self.get_avg_HCE(), -self.get_avg_NOx(), -self.get_avg_PMx(), -self.get_avg_fuel(), self.get_avg_speed()]
+        else:
+            last_reward = [self._queue_reward(), self.get_flow()]
+        # print(last_reward, testing)
         # self.last_reward = [self._queue_reward(), self._pressure_reward()]
-        # self.last_reward = [self.get_flow(), self._queue_reward()]
-        # print(self.last_reward)
+        # last_reward = [self.get_flow(), self._queue_reward()]
         # self.get_flow()
         # self.last_reward = [self._queue_reward(), 0]
+
+        # linear = self.normalizer.transform([np.array(last_reward)])[0] if normalize else np.array(last_reward)
+        # m = 0.5
+        # self.linearComb.append(-1*m*linear[0] + (1-m)*linear[1])
+
+        # if last_reward[0] == 0 and last_reward[1] == 0:
+        #     last_reward[0] = last_reward[0] + random.random()/1000
+        #     last_reward[1] = last_reward[1] + random.random()/1000
+        # self.linearComb.append(np.linalg.solve([[1, 1], last_reward], self.last_reward))
+        # self.linearComb.append(np.linalg.solve([self.last_reward, last_reward], [1, 1]))
+        # self.linearComb.append(np.linalg.norm(last_reward))
+        # print(self.linearComb[-1])
+        self.last_reward = last_reward
+        self.rewards.append(last_reward)
+        if self.__collect:
+            self.collector(last_reward)
         return self.last_reward
 
     def _pressure_reward(self):
@@ -227,6 +277,40 @@ class TrafficSignal:
 
     def get_total_vehicles(self):
         return sum(traci.lane.getLastStepVehicleNumber(lane) for lane in self.lanes)
+
+    def get_avg_queued(self):
+        return sum([traci.lane.getLastStepHaltingNumber(lane) for lane in self.lanes]) / len(self.lanes)
+
+    def get_avg_speed(self):
+        return sum([traci.lane.getLastStepMeanSpeed(lane) if traci.lane.getLastStepVehicleNumber(lane) else 0 for lane in self.lanes])/len(self.lanes)
+
+    def get_avg_travel_time(self):
+        return sum([traci.lane.getTraveltime(lane) for lane in self.lanes])/len(self.lanes)
+
+    def get_avg_travel_time_2(self):
+        vehicle_id_entering_list = self.get_vehicle_id_entering()
+        return self.get_travel_time_duration(self.dic_vehicles, vehicle_id_entering_list)
+
+    def get_travel_times(self):
+        return [traci.lane.getTraveltime(lane) for lane in self.lanes]
+
+    def get_avg_CO2(self):
+        return sum([traci.lane.getCO2Emission(lane) for lane in self.lanes])/len(self.lanes)
+
+    def get_avg_CO(self):
+        return sum([traci.lane.getCOEmission(lane) for lane in self.lanes])/len(self.lanes)
+
+    def get_avg_HCE(self):
+        return sum([traci.lane.getHCEmission(lane) for lane in self.lanes])/len(self.lanes)
+
+    def get_avg_NOx(self):
+        return sum([traci.lane.getNOxEmission(lane) for lane in self.lanes])/len(self.lanes)
+
+    def get_avg_PMx(self):
+        return sum([traci.lane.getPMxEmission(lane) for lane in self.lanes])/len(self.lanes)
+
+    def get_avg_fuel(self):
+        return sum([traci.lane.getFuelConsumption(lane) for lane in self.lanes])/len(self.lanes)
 
     def _get_veh_list(self):
         veh_list = []
@@ -403,7 +487,7 @@ class TrafficSignal:
             if (vehicle_id in vehicle_dict.keys()):
                 travel_time_duration += (traci.simulation.getCurrentTime() / 1000 - vehicle_dict[vehicle_id].enter_time)/60.0
         if len(vehicle_id_list) > 0:
-            return travel_time_duration#/len(vehicle_id_list)
+            return travel_time_duration/len(vehicle_id_list)
         else:
             return 0
 

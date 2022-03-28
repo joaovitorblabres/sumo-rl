@@ -43,6 +43,9 @@ def bests(results):
     # print(avg)
     print(min(mins), params[mins.index(min(mins))])
     print(min(means), params[means.index(min(means))])
+    prg = copy.deepcopy(means)
+    means.sort()
+    print(means[:10], [params[prg.index(val)] for val in means[:10]])
 
 prs = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                               description="""Plot Traffic Signal Metrics""")
@@ -55,15 +58,15 @@ for file in args.f:
     for alphas in glob.glob(file+"/*"):
         main_df = pd.DataFrame()
         params = alphas.split("_")
-        alpha = params[1].split('/')[-1][5:]
+        alpha = params[2].split('/')[-1][5:]
         # alpha = params[1].split('/')[-1][5:]
         alphaG = 0
         # alphaG = params[3][6:]
-        gamma = params[2][5:]
+        gamma = params[3][5:]
         # gamma = params[2][5:]
         gammaG = 0
         # gammaG = params[4][6:]
-        eps = params[3][3:]
+        eps = params[4][3:]
         # eps = params[5][3:]
         print(alpha, gamma, eps, alphaG, gammaG)
         if alpha not in results.keys():
@@ -81,17 +84,28 @@ for file in args.f:
             for hora in glob.glob(data+"/*"):
                 print(hora)
                 for f in sorted(glob.glob(hora+"/_r*"), key=os.path.getmtime):
+                    # print(f)
                     df = pd.read_csv(f, sep=',')
 
-                    if main_df.empty:
-                        main_df = df
-                    else:
-                        main_df = pd.concat((main_df, df))
+                    # if main_df.empty:
+                        # main_df = df
+                    # else:
+                        # main_df = pd.concat((main_df, df))
 
-                    # all = df.groupby('step_time').sum()['average_wait_time']
-                    all = df.groupby('step_time').sum()['flow']*-1
-                    results[alpha][alphaG][gamma][gammaG][eps]['values'].append(sum(all))
+                    all = df.groupby('step_time').sum()['total_wait_time']
+                    # all = df.groupby('step_time').sum()['flow']*-1
+                    if int(f.split('_')[-2][3:]) == 1:
+                        results[alpha][alphaG][gamma][gammaG][eps]['values'].append(sum(all)/len(all))
+                        # print(f.split('_')[-1].split('.')[0][2:], results[alpha][alphaG][gamma][gammaG][eps]['values'][int(f.split('_')[-1].split('.')[0][2:])-1], (sum(all)/len(all)))
+                    else:
+                        # print(f.split('_')[-1].split('.')[0][2:], results[alpha][alphaG][gamma][gammaG][eps]['values'][int(f.split('_')[-1].split('.')[0][2:])-1], (sum(all)/len(all)))
+                        results[alpha][alphaG][gamma][gammaG][eps]['values'][int(f.split('_')[-1].split('.')[0][2:])-1] += ((sum(all)/len(all)) - results[alpha][alphaG][gamma][gammaG][eps]['values'][int(f.split('_')[-1].split('.')[0][2:])-1])/int(f.split('_')[-2][3:])
+                    # print(f.split('_')[-1].split('.')[0][2:], results[alpha][alphaG][gamma][gammaG][eps]['values'][int(f.split('_')[-1].split('.')[0][2:])-1], (sum(all)/len(all)))
+
+                    # print(results[alpha][alphaG][gamma][gammaG][eps]['values'])
                     results[alpha][alphaG][gamma][gammaG][eps]['avgs'].append(statistics.mean(all))
+                # exit()
+                # print(sum(results[alpha][alphaG][gamma][gammaG][eps]['values'][-20:])/20)
                 results[alpha][alphaG][gamma][gammaG][eps]['mean'].append(statistics.mean(results[alpha][alphaG][gamma][gammaG][eps]['values']))
                 results[alpha][alphaG][gamma][gammaG][eps]['sum'].append(sum(results[alpha][alphaG][gamma][gammaG][eps]['values']))
                 # if any([val < 10000 for val in results[alpha][alphaG][gamma][gammaG][eps]['avgs']]):

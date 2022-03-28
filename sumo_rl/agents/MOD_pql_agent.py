@@ -63,9 +63,9 @@ def compute_hypervolume(q_set, nA, ref):
         q_values[i] = hv.compute(ref*-1)
     return q_values
 
-class PQLAgent:
+class modPQLAgent:
 
-    def __init__(self, starting_state, state_space, action_space, ref_point, gamma=0.95, exploration_strategy=EpsilonGreedy(), number_obejctives=2):
+    def __init__(self, starting_state, state_space, action_space, ref_point, gamma=0.95, exploration_strategy=EpsilonGreedy(), number_obejctives=2, grouped=0, gt=0.5):
         self.state = starting_state
         self.state_space = 1
         for space in state_space:
@@ -76,17 +76,21 @@ class PQLAgent:
         self.lenAct = []
         self.actRnd = []
         self.gamma = gamma
+        self.groupTheta = gt
         self.minEpsilonGroup = 0.05
         self.q_table = {self.state: [0 for _ in range(action_space.n)]}
         self.exploration = exploration_strategy
         self.acc_reward = np.zeros(number_obejctives)
         self.followed = False
         self.number_obejctives = number_obejctives
+        self.grouped = grouped
+        np.set_printoptions(suppress=True)
 
         # self.non_dominated = [[[np.random.uniform(-100,100,2)] for _ in range(self.action_space.n)] for _ in range(self.state_space)]
-        # self.non_dominated = [[[np.array([0,0])] for _ in range(self.action_space.n)] for _ in range(self.state_space)]
-        self.non_dominated = [[[np.zeros(number_obejctives)] for _ in range(self.action_space.n)] for _ in range(self.state_space)]
+        self.non_dominated = [[[np.array([0,0])] for _ in range(self.action_space.n)] for _ in range(self.state_space)]
         # self.non_dominated = {self.state: [np.zeros(number_obejctives) for _ in range(self.action_space.n)]}
+        # self.avg_others = np.array([np.array([np.array([0.,0.]) for _ in range(self.action_space.n)]) for _ in range(self.state_space)])
+        self.avg_others = np.zeros((self.state_space, self.action_space.n, number_obejctives))
         # self.avg_r = np.array([np.array([np.array([100.,0.]) for _ in range(self.action_space.n)]) for _ in range(self.state_space)])
         self.avg_r = np.zeros((self.state_space, self.action_space.n, number_obejctives))
         # self.avg_r = {self.state: [np.zeros(number_obejctives) for _ in range(self.action_space.n)]}
@@ -98,11 +102,15 @@ class PQLAgent:
         # print(self.non_dominated, self.action_space.n)
 
     def compute_q_set(self, s):
+        m = self.groupTheta
         warnings.simplefilter("ignore")
         q_set = []
         for a in range(self.action_space.n):
             nd_sa = self.non_dominated[s][a]
             rew = self.avg_r[s][a]
+
+            if self.grouped:
+                rew = (m*rew) + ((1-m)*self.avg_others[s][a])
             q_set.append([rew + self.gamma*nd for nd in nd_sa])
             # print([nd for nd in nd_sa])
         return np.asarray(q_set)
@@ -111,17 +119,18 @@ class PQLAgent:
         q_set_n = self.compute_q_set(s_n)
         # update for all actions, flatten
         solutions = np.concatenate(q_set_n, axis=0)
-        # print(solutions, self.non_dominated[s][a])
         # append to current pareto front
+        # print(solutions, self.non_dominated[s][a])
         # solutions = np.concatenate([solutions, self.non_dominated[s][a]])
+        # solutions = np.unique(solutions.round(decimals=4), axis=0)
 
         # compute pareto front
-        # solutions = np.unique(solutions.round(decimals=4), axis=0)
         # print(solutions, s_n, q_set_n, paretoEfficient(solutions, False, True))
-        # self.non_dominated[s][a] = np.unique(solutions[paretoEfficient(solutions, False, False, False)].round(decimals=4), axis=0)
-        # self.non_dominated[s][a] = solutions[paretoEfficient(solutions, False, False, False)]
+        # nonD = np.array([list(solutions[x]) for x in paretoEfficient(solutions, False, True, False)])
+        # nonD = paretoEfficient(solutions, False, False, False)
+        # myset = solutions[nonD]
         # print("NON", solutions[nonD], myset, get_non_dominated(solutions))
-
+        # self.non_dominated[s][a] = myset
         self.non_dominated[s][a] = get_non_dominated(solutions)
 
     def act(self):
