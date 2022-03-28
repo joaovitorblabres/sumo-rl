@@ -28,24 +28,26 @@ if __name__ == '__main__':
     prs = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                   description="""Q-Learning Diamond Network""")
     prs.add_argument("-route", dest="route", type=str, default='nets/diamond/DiamondTLs.rou.xml', help="Route definition xml file.\n")
-    prs.add_argument("-a", dest="alpha", type=float, default=0.15, required=False, help="Alpha learning rate.\n")
-    prs.add_argument("-g", dest="gamma", type=float, default=0.95, required=False, help="Gamma discount rate.\n")
-    prs.add_argument("-e", dest="epsilon", type=float, default=1, required=False, help="Epsilon.\n")
+    prs.add_argument("-a", dest="alpha", type=float, default=0.3, required=False, help="Alpha learning rate.\n")
+    prs.add_argument("-g", dest="gamma", type=float, default=0.8, required=False, help="Gamma discount rate.\n")
+    prs.add_argument("-e", dest="epsilon", type=float, default=0.05, required=False, help="Epsilon.\n")
     prs.add_argument("-me", dest="min_epsilon", type=float, default=0.05, required=False, help="Minimum epsilon.\n")
-    prs.add_argument("-d", dest="decay", type=float, default=0.95, required=False, help="Epsilon decay.\n")
+    prs.add_argument("-d", dest="decay", type=float, default=1, required=False, help="Epsilon decay.\n")
     prs.add_argument("-mingreen", dest="min_green", type=int, default=5, required=False, help="Minimum green time.\n")
     prs.add_argument("-maxgreen", dest="max_green", type=int, default=50, required=False, help="Maximum green time.\n")
     prs.add_argument("-gui", action="store_true", default=False, help="Run with visualization on SUMO.\n")
     prs.add_argument("-fixed", action="store_true", default=False, help="Run with fixed timing traffic signals.\n")
     prs.add_argument("-ns", dest="ns", type=int, default=42, required=False, help="Fixed green time for NS.\n")
     prs.add_argument("-we", dest="we", type=int, default=42, required=False, help="Fixed green time for WE.\n")
-    prs.add_argument("-s", dest="seconds", type=int, default=8000, required=False, help="Number of simulation seconds.\n")
+    prs.add_argument("-s", dest="seconds", type=int, default=20000, required=False, help="Number of simulation seconds.\n")
     prs.add_argument("-v", action="store_true", default=False, help="Print experience tuple.\n")
     prs.add_argument("-eps", dest="eps", type=int, default=1, help="Number of episodes.\n")
     prs.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
+    prs.add_argument("-optimize", action="store_true", default=False, help="Debug spent time in each function.\n")
     args = prs.parse_args()
     experiment_time = str(datetime.now()).split('.')[0].split(' ')
-    out_csv = 'outputs/WAIT_OPT_5x/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
+    out_csv = 'outputs/{}{}OPT_QL_WAIT/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(['OPT_' if args.optimize else ''][0], ['FIXED_' if args.fixed else ''][0], args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
+    # out_csv = 'outputs/{}OPT_QL_WAIT/alpha{}_gamma{}_eps{}_decay{}/{}/{}/'.format(['FIXED_' if args.fixed else ''][0], args.alpha, args.gamma, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
 
     env = SumoEnvironment(net_file='nets/diamond/DiamondTLs.net.xml',
                           route_file=args.route,
@@ -94,6 +96,8 @@ if __name__ == '__main__':
                     _, _, done, _ = env.step({})
             else:
                 while not done['__all__']:
+                    if env.sim_step % 1000 == 0:
+                        print(env.sim_step, env.val)
                     actions = {ts: ql_agents[ts].act() for ts in ql_agents.keys()}
                     density['step_time'].append(env.sim_step)
                     for ts in ql_agents.keys():
@@ -139,6 +143,13 @@ if __name__ == '__main__':
                 ]
             # for type,data in types:
                 # csv_make_dir( type, data, out_csv  )
+
+            # for ts in ql_agents.keys():
+            #      LC = out_csv+'REWARDS_{}_{}_{}.csv'.format(ts, run, ep)
+            #      os.makedirs(os.path.dirname(LC), exist_ok=True)
+            #
+            #      non = pd.DataFrame(env.traffic_signals[ts].rewards[:])
+            #      non.to_csv(LC, index=False)
 
             df = pd.DataFrame(env.metrics)
             twt.append(df['flow'].sum())

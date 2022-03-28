@@ -113,45 +113,59 @@ def get_non_dominated(solutions):
     # return nonA
 
 class MOSelection:
-    def __init__(self, initial_epsilon=0.05, min_epsilon=0.05, decay=1, ref=np.asarray([-100, -100])):
+    '''
+        algType:Int - {0 = Hypervolume, 1 = Pareto Selection, others = Random, default: 0}
+    '''
+    def __init__(self, initial_epsilon=0.05, min_epsilon=0.05, decay=1, ref=np.asarray([100, -100]), algType=0):
         self.initial_epsilon = initial_epsilon
         self.epsilon = initial_epsilon
         self.min_epsilon = min_epsilon
         self.decay = decay
         self.ref = ref
+        self.lenAct = 0
+        self.actRnd = 0
+        self.algType = algType
 
     def choose(self, q_set, state, action_space):
-        # qSet = copy.deepcopy(q_set)
-        # q_values = compute_hypervolume(qSet, action_space.n, self.ref)
-
-        solutions = copy.deepcopy(np.concatenate(q_set, axis=0))
-        # print("QSET", qSet)
-        # nonD = [1,0]
-        p = paretoEfficient(solutions, False, False, False)
-        nonD = solutions[p]
-        # print(action_space.n)
-        actions = []
-        for s, q in enumerate(q_set):
-            if len(actions) == action_space.n:
-                break
-            for n in nonD:
+        if self.algType == 0:
+            qSet = copy.deepcopy(q_set)
+            q_values = compute_hypervolume(qSet, action_space.n, self.ref)
+            # print(q_values)
+        elif self.algType == 1:
+            solutions = copy.deepcopy(np.concatenate(q_set, axis=0))
+            p = paretoEfficient(solutions, False, False, False)
+            nonD = solutions[p]
+            actions = []
+            for s, q in enumerate(q_set):
                 if len(actions) == action_space.n:
                     break
-                for v in q:
-                    # print(v, n, q, s, action_space.n, actions)
-                    if np.array_equal(v, n):
-                        if s not in actions:
-                            actions.append(s)
-                            break
+                for n in nonD:
+                    if len(actions) == action_space.n:
+                        break
+                    for v in q:
+                        # print(v, n, q, s, action_space.n, actions)
+                        if np.array_equal(v, n):
+                            if s not in actions:
+                                actions.append(s)
+                                continue
 
-        # print(actions)
+            self.lenAct = len(actions)
+            self.actRnd = 0
+            if self.lenAct == q_set.shape[0]:
+                self.actRnd = 1
+
         if np.random.rand() >= self.epsilon:
             self.epsilon = max(self.epsilon*self.decay, self.min_epsilon)
-            # return np.random.choice(np.argwhere(q_values == np.amax(q_values)).flatten())
-            return np.random.choice(actions)
+            if self.algType == 0:
+                return np.random.choice(np.argwhere(q_values == np.amax(q_values)).flatten())
+            elif self.algType == 1:
+                return np.random.choice(actions)
+            else:
+                return np.random.choice(range(q_set.shape[0]))
         else:
             self.epsilon = max(self.epsilon*self.decay, self.min_epsilon)
             # print(q_set, q_values, nonD)
+            self.lenAct = q_set.shape[0]
             return np.random.choice(range(q_set.shape[0]))
 
         #print(self.epsilon)
