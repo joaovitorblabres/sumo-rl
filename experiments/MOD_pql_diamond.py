@@ -58,7 +58,7 @@ if __name__ == '__main__':
     out_csv = 'outputs/{}{}{}{}MOD/gamma{}_gt{}_eps{}_decay{}/{}/{}/'.format(['OPT_' if args.optimize else ''][0],['PO_' if args.algType else 'HV_'][0], ['FIXED_' if args.fixed else ''][0], ['DEBUG_' if args.debug else ''][0], args.gamma, args.gt, args.epsilon, args.decay, experiment_time[0], experiment_time[1])
     debug = args.debug
 
-    env = SumoEnvironment(net_file='nets/diamond/DiamondTLs.net.xml',
+    env = SumoEnvironment(net_file='nets/MOD_diamond/DiamondTLs.net.xml',
                           route_file=args.route,
                           out_csv_name=out_csv,
                           use_gui=args.gui,

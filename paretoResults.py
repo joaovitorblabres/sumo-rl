@@ -61,7 +61,7 @@ for file in args.f:
         gamma = params[2].split('/')[-1][5:]
         alpha = 0
         alphaG = 0
-        # alphaG = params[3][6:]
+        alphaG = params[3][2:]
         # gamma = 0
         # gamma = params[2][5:]
         gammaG = 0
@@ -92,11 +92,15 @@ for file in args.f:
                         main_df = pd.concat((main_df, df))
 
                     avg = df.groupby('step_time').sum()['total_wait_time']*-1
-                    results[alpha][alphaG][gamma][gammaG][eps]['avg']['values'].append(sum(avg)/len(avg))
                     results[alpha][alphaG][gamma][gammaG][eps]['avg']['avgs'].append(statistics.mean(avg))
                     flow = df.groupby('step_time').sum()['flow']
-                    results[alpha][alphaG][gamma][gammaG][eps]['flow']['values'].append(sum(flow)/len(flow))
                     results[alpha][alphaG][gamma][gammaG][eps]['flow']['avgs'].append(statistics.mean(flow))
+                    if int(f.split('_')[-2][3:]) == 1:
+                        results[alpha][alphaG][gamma][gammaG][eps]['avg']['values'].append(sum(avg)/len(avg))
+                        results[alpha][alphaG][gamma][gammaG][eps]['flow']['values'].append(sum(flow)/len(flow))
+                    else:
+                        results[alpha][alphaG][gamma][gammaG][eps]['avg']['values'][int(f.split('_')[-1].split('.')[0][2:])-1] += ((sum(avg)/len(avg)) - results[alpha][alphaG][gamma][gammaG][eps]['avg']['values'][int(f.split('_')[-1].split('.')[0][2:])-1])/int(f.split('_')[-2][3:])
+                        results[alpha][alphaG][gamma][gammaG][eps]['flow']['values'][int(f.split('_')[-1].split('.')[0][2:])-1] += ((sum(flow)/len(flow)) - results[alpha][alphaG][gamma][gammaG][eps]['flow']['values'][int(f.split('_')[-1].split('.')[0][2:])-1])/int(f.split('_')[-2][3:])
 
                 results[alpha][alphaG][gamma][gammaG][eps]['avg']['mean'].append(statistics.mean(results[alpha][alphaG][gamma][gammaG][eps]['avg']['values']))
                 results[alpha][alphaG][gamma][gammaG][eps]['avg']['sum'].append(sum(results[alpha][alphaG][gamma][gammaG][eps]['avg']['values']))
