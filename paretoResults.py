@@ -60,7 +60,7 @@ for file in args.f:
         params = alphas.split("_")
         gamma = params[2].split('/')[-1][5:]
         alpha = 0
-        alphaG = 0
+        # alphaG = 0
         alphaG = params[3][2:]
         # gamma = 0
         # gamma = params[2][5:]
@@ -111,11 +111,12 @@ for file in args.f:
     sums = []
     gammas = []
     groups = []
-    for g in results[alpha][alphaG].keys():
-        gammas.append(g)
-        groups.append(alpha)
-        means.append(results[alpha][alphaG][g][gammaG][eps]['avg']['mean'] + results[alpha][alphaG][g][gammaG][eps]['flow']['mean'])
-        sums.append(results[alpha][alphaG][g][gammaG][eps]['avg']['sum'] + results[alpha][alphaG][g][gammaG][eps]['flow']['sum'])
+    for alphaG in results[alpha].keys():
+        for g in results[alpha][alphaG].keys():
+            gammas.append(g)
+            groups.append(alphaG)
+            means.append(results[alpha][alphaG][g][gammaG][eps]['avg']['mean'] + results[alpha][alphaG][g][gammaG][eps]['flow']['mean'])
+            sums.append(results[alpha][alphaG][g][gammaG][eps]['avg']['sum'] + results[alpha][alphaG][g][gammaG][eps]['flow']['sum'])
 
     par = paretoEfficient(np.array(means), False, True, False)
     mean_p = [gammas[p] for p in par]

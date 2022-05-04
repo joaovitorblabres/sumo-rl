@@ -167,7 +167,7 @@ class SumoEnvironment(MultiAgentEnv):
         # return {ts: self.traffic_signals[ts].compute_observation() for ts in self.ts_ids}
 
     def _compute_rewards(self, test):
-        return {ts: self.traffic_signals[ts].compute_reward() for ts in self.ts_ids if self.traffic_signals[ts].time_to_act}
+        return {ts: self.traffic_signals[ts].compute_reward(testing=test) for ts in self.ts_ids if self.traffic_signals[ts].time_to_act}
         # return {ts: self.traffic_signals[ts].compute_reward(testing=test) for ts in self.ts_ids}
 
     @property

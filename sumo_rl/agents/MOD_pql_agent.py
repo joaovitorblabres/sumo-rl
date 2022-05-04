@@ -122,7 +122,7 @@ class modPQLAgent:
         # append to current pareto front
         # print(solutions, self.non_dominated[s][a])
         # solutions = np.concatenate([solutions, self.non_dominated[s][a]])
-        # solutions = np.unique(solutions.round(decimals=4), axis=0)
+        solutions = np.unique(solutions.round(decimals=4), axis=0)
 
         # compute pareto front
         # print(solutions, s_n, q_set_n, paretoEfficient(solutions, False, True))

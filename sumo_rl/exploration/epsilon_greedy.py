@@ -127,41 +127,48 @@ class MOSelection:
         self.algType = algType
 
     def choose(self, q_set, state, action_space):
-        if self.algType == 0:
-            qSet = copy.deepcopy(q_set)
-            q_values = compute_hypervolume(qSet, action_space.n, self.ref)
-            # print(q_values)
-        elif self.algType == 1:
-            solutions = copy.deepcopy(np.concatenate(q_set, axis=0))
-            p = paretoEfficient(solutions, False, False, False)
-            nonD = solutions[p]
-            actions = []
-            for s, q in enumerate(q_set):
-                if len(actions) == action_space.n:
-                    break
-                for n in nonD:
+        if np.random.rand() >= self.epsilon:
+            if self.algType == 0:
+                qSet = copy.deepcopy(q_set)
+                q_values = compute_hypervolume(qSet, action_space.n, self.ref)
+                # print(q_values)
+            elif self.algType == 1:
+                solutions = np.concatenate(q_set, axis=0)
+                p = paretoEfficient(solutions, False, False, False)
+                nonD = solutions[p]
+                actions = []
+                for s, q in enumerate(q_set):
                     if len(actions) == action_space.n:
                         break
-                    for v in q:
-                        # print(v, n, q, s, action_space.n, actions)
-                        if np.array_equal(v, n):
-                            if s not in actions:
-                                actions.append(s)
-                                continue
+                    for n in nonD:
+                        if len(actions) == action_space.n:
+                            break
+                        for v in q:
+                            # print(v, n, q, s)
+                            if np.array_equal(v, n):
+                                if s not in actions:
+                                    actions.append(s)
+                            if s in actions:
+                                break
+                        if s in actions:
+                            break
 
-            self.lenAct = len(actions)
-            self.actRnd = 0
-            if self.lenAct == q_set.shape[0]:
-                self.actRnd = 1
+                self.lenAct = len(actions)
+                self.actRnd = 0
+                if self.lenAct == q_set.shape[0]:
+                    self.actRnd = 1
 
-        if np.random.rand() >= self.epsilon:
+            # print(actions)
             self.epsilon = max(self.epsilon*self.decay, self.min_epsilon)
             if self.algType == 0:
                 return np.random.choice(np.argwhere(q_values == np.amax(q_values)).flatten())
             elif self.algType == 1:
-                return np.random.choice(actions)
+                try:
+                    return np.random.choice(actions)
+                except:
+                    return np.random.choice(range(action_space.n))
             else:
-                return np.random.choice(range(q_set.shape[0]))
+                return np.random.choice(range(action_space.n))
         else:
             self.epsilon = max(self.epsilon*self.decay, self.min_epsilon)
             # print(q_set, q_values, nonD)
